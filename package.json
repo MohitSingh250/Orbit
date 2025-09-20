@@ -1,0 +1,28 @@
+{
+  "name": "orbit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MohitSingh250/Orbit.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MohitSingh250/Orbit/issues"
+  },
+  "homepage": "https://github.com/MohitSingh250/Orbit#readme",
+  "dependencies": {
+    "express": "^5.1.0",
+    "mongoose": "^8.18.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
