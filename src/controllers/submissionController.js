@@ -21,15 +21,12 @@ const submitAnswer = async (req, res, next) => {
       if (now < new Date(contest.startTime) || now > new Date(contest.endTime)) {
         return res.status(400).json({ message: 'Outside contest time window' });
       }
-      // Check if user joined
       const joined = contest.participants.find(p => String(p.userId) === String(userId));
       if (!joined) return res.status(403).json({ message: 'Join contest before submitting' });
     }
 
-    // grade
     const { correct, score, manual } = compareAnswers(problem, answer);
 
-    // Create submission and update user/contest atomically
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
@@ -43,7 +40,6 @@ const submitAnswer = async (req, res, next) => {
         score: score || 0,
       }], { session });
 
-      // update user solvedProblems only if correct and not already solved
       if (correct) {
         await User.updateOne(
           { _id: userId, solvedProblems: { $ne: problem._id } },
@@ -52,12 +48,9 @@ const submitAnswer = async (req, res, next) => {
         );
       }
 
-      // update contest participant stats if contest
       if (contest) {
-        // find participant
         const pIndex = contest.participants.findIndex(p => String(p.userId) === String(userId));
         if (pIndex !== -1) {
-          // If the user has already solved this problem in this contest, do not double-credit.
           const alreadySolved = await Submission.findOne({
             userId,
             contestId,
