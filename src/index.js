@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const problemRoutes = require('./routes/problems');
 const contestRoutes = require('./routes/contests');
 const submissionRoutes = require('./routes/submissions');
+const advancedRoutes = require('./routes/advanced');
 
 const app = express();
 app.use(cors());
@@ -17,6 +18,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/contests', contestRoutes);
 app.use('/api/submissions', submissionRoutes);
+app.use('/api', advancedRoutes);
 
 app.use(errorHandler);
 

@@ -20,5 +20,6 @@ solution: { type: String },
 createdAt: { type: Date, default: Date.now }
 });
 
+ProblemSchema.index({ title: 'text', statement: 'text' });
 
 module.exports = mongoose.model('Problem', ProblemSchema);
