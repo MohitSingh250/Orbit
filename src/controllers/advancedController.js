@@ -4,7 +4,22 @@ const Problem = require('../models/Problem');
 const Submission = require('../models/Submission');
 const User = require('../models/User');
 
-// 1) List problems with filters and search
+const getUserStreak = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).lean();
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    res.json({
+      currentStreak: user.currentStreak || 0,
+      longestStreak: user.longestStreak || 0,
+      lastSolvedAt: user.lastSolvedAt || null
+    });
+    console.log("my streak is 50")
+  } catch (err) {
+    next(err);
+  }
+};
+
 const listProblems = async (req, res, next) => {
   try {
     const { topic, difficulty, q, tags, page = 1, limit = 20 } = req.query;
@@ -76,7 +91,6 @@ const getProblemDetailForUser = async (req, res, next) => {
   }
 };
 
-// 3) Problem stats aggregation
 const getProblemStats = async (problemId) => {
   const pid = new mongoose.Types.ObjectId(problemId);
 
@@ -147,7 +161,6 @@ const getProblemStats = async (problemId) => {
   };
 };
 
-// 4) Toggle bookmark
 const toggleBookmark = async (req, res, next) => {
   try {
     const userId = req.user._id;
@@ -172,7 +185,6 @@ const toggleBookmark = async (req, res, next) => {
   }
 };
 
-// 5) Get bookmarks list
 const getBookmarks = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id).populate('bookmarks', 'title difficulty topics').lean();
@@ -182,7 +194,6 @@ const getBookmarks = async (req, res, next) => {
   }
 };
 
-// 6) Daily problem
 const getDailyProblem = async (req, res, next) => {
   try {
     console.log("Daily problem route hit");
@@ -278,5 +289,6 @@ module.exports = {
   toggleBookmark,
   getBookmarks,
   getDailyProblem,
-  getUserDashboard
+  getUserDashboard,
+  getUserStreak
 };

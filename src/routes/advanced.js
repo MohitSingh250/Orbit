@@ -17,5 +17,6 @@ router.get('/problems/:id', ctrl.getProblemDetail);          // general last
 router.post('/users/me/bookmarks', auth, ctrl.toggleBookmark);
 router.get('/users/me/bookmarks', auth, ctrl.getBookmarks);
 router.get('/users/me/dashboard', auth, ctrl.getUserDashboard);
+router.get('/users/me/streak', auth, ctrl.getUserStreak);
 
 module.exports = router;

@@ -17,10 +17,12 @@ const submitAnswer = async (req, res, next) => {
     if (contestId) {
       contest = await Contest.findById(contestId);
       if (!contest) return res.status(404).json({ message: 'Contest not found' });
+
       const now = new Date();
       if (now < new Date(contest.startTime) || now > new Date(contest.endTime)) {
         return res.status(400).json({ message: 'Outside contest time window' });
       }
+
       const joined = contest.participants.find(p => String(p.userId) === String(userId));
       if (!joined) return res.status(403).json({ message: 'Join contest before submitting' });
     }
@@ -41,9 +43,38 @@ const submitAnswer = async (req, res, next) => {
       }], { session });
 
       if (correct) {
+        const user = await User.findById(userId).session(session);
+        const today = new Date().toDateString();
+        const lastSolved = user.lastSolvedAt ? new Date(user.lastSolvedAt).toDateString() : null;
+
+        if (lastSolved === today) {
+          // Already solved today → streak unchanged
+        } else if (lastSolved && (new Date(today) - new Date(lastSolved)) / (1000 * 60 * 60 * 24) === 1) {
+          // Solved yesterday → streak++
+          user.currentStreak = (user.currentStreak || 0) + 1;
+        } else {
+          // Missed days → reset streak
+          user.currentStreak = 1;
+        }
+
+        // Update longest streak
+        if (!user.longestStreak || user.currentStreak > user.longestStreak) {
+          user.longestStreak = user.currentStreak;
+        }
+
+        user.lastSolvedAt = new Date();
+
+        // ✅ Save solved problem too
         await User.updateOne(
           { _id: userId, solvedProblems: { $ne: problem._id } },
-          { $addToSet: { solvedProblems: problem._id } },
+          { 
+            $addToSet: { solvedProblems: problem._id },
+            $set: { 
+              currentStreak: user.currentStreak,
+              longestStreak: user.longestStreak,
+              lastSolvedAt: user.lastSolvedAt
+            }
+          },
           { session }
         );
       }
