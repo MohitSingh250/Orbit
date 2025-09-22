@@ -41,12 +41,13 @@ const listProblems = async (req, res, next) => {
 const getProblemDetail = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid problem id' });
+    if (!new mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid problem id' });
 
     const problem = await Problem.findById(id).populate('similarProblems', 'title difficulty topics').lean();
     if (!problem) return res.status(404).json({ message: 'Problem not found' });
 
     const stats = await getProblemStats(id);
+    console.log("get id problem")
     res.json({ ...problem, stats });
   } catch (err) {
     next(err);
@@ -77,7 +78,7 @@ const getProblemDetailForUser = async (req, res, next) => {
 
 // 3) Problem stats aggregation
 const getProblemStats = async (problemId) => {
-  const pid = mongoose.Types.ObjectId(problemId);
+  const pid = new mongoose.Types.ObjectId(problemId);
 
   const solversAgg = await Submission.aggregate([
     { $match: { problemId: pid, isCorrect: true } },
@@ -151,7 +152,7 @@ const toggleBookmark = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const { problemId } = req.body;
-    if (!mongoose.Types.ObjectId.isValid(problemId)) return res.status(400).json({ message: 'Invalid problemId' });
+    if (!new mongoose.Types.ObjectId.isValid(problemId)) return res.status(400).json({ message: 'Invalid problemId' });
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -184,6 +185,7 @@ const getBookmarks = async (req, res, next) => {
 // 6) Daily problem
 const getDailyProblem = async (req, res, next) => {
   try {
+    console.log("Daily problem route hit");
     const dateKey = new Date().toISOString().slice(0, 10);
     const count = await Problem.countDocuments();
     if (count === 0) return res.status(404).json({ message: 'No problems available' });
@@ -201,13 +203,16 @@ const getDailyProblem = async (req, res, next) => {
 const getUserDashboard = async (req, res, next) => {
   try {
     const userId = req.user._id;
-    const user = await User.findById(userId).populate('solvedProblems', 'title difficulty topics').lean();
+    const user = await User.findById(userId)
+      .populate('solvedProblems', 'title difficulty topics')
+      .lean();
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const agg = await Submission.aggregate([
-      { $match: { userId: mongoose.Types.ObjectId(userId) } },
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       { $group: { _id: '$isCorrect', count: { $sum: 1 } } }
     ]);
+
     let correct = 0, total = 0;
     agg.forEach(a => {
       total += a.count;
@@ -216,8 +221,15 @@ const getUserDashboard = async (req, res, next) => {
     const accuracy = total === 0 ? 0 : (correct / total) * 100;
 
     const topicAgg = await Submission.aggregate([
-      { $match: { userId: mongoose.Types.ObjectId(userId) } },
-      { $lookup: { from: 'problems', localField: 'problemId', foreignField: '_id', as: 'problem' } },
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+      {
+        $lookup: {
+          from: 'problems',
+          localField: 'problemId',
+          foreignField: '_id',
+          as: 'problem'
+        }
+      },
       { $unwind: '$problem' },
       { $unwind: { path: '$problem.topics', preserveNullAndEmptyArrays: true } },
       { $group: { _id: { topic: '$problem.topics', isCorrect: '$isCorrect' }, count: { $sum: 1 } } }
@@ -230,13 +242,18 @@ const getUserDashboard = async (req, res, next) => {
       topicStats[t].attempts += r.count;
       if (r._id.isCorrect === true) topicStats[t].correct += r.count;
     });
+
     Object.keys(topicStats).forEach(t => {
       topicStats[t].accuracy = topicStats[t].attempts === 0 ? 0 :
         Number(((topicStats[t].correct / topicStats[t].attempts) * 100).toFixed(2));
     });
 
-    const notes = (user.notes || []).map(n => ({ problemId: n.problemId, note: n.note, createdAt: n.createdAt }));
-    const bookmarks = (user.bookmarks || []);
+    const notes = (user.notes || []).map(n => ({
+      problemId: n.problemId,
+      note: n.note,
+      createdAt: n.createdAt
+    }));
+    const bookmarks = user.bookmarks || [];
 
     res.json({
       username: user.username,

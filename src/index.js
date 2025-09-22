@@ -13,12 +13,12 @@ const advancedRoutes = require('./routes/advanced');
 const app = express();
 app.use(cors());
 app.use(express.json());
-
+app.use('/api', advancedRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/contests', contestRoutes);
 app.use('/api/submissions', submissionRoutes);
-app.use('/api', advancedRoutes);
+
 
 app.use(errorHandler);
 
