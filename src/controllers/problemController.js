@@ -1,8 +1,6 @@
-// src/controllers/problemController.js
 const mongoose = require('mongoose');
 const Problem = require('../models/Problem');
 
-// 1️⃣ Create a new problem
 const createProblem = async (req, res, next) => {
   try {
     const payload = req.body;
@@ -13,23 +11,18 @@ const createProblem = async (req, res, next) => {
   }
 };
 
-// 2️⃣ List problems with filters, text search, and pagination
 const listProblems = async (req, res, next) => {
   try {
     const { topic, difficulty, tags, q, page = 1, limit = 20 } = req.query;
 
     const andFilters = [];
 
-    // Text search
     if (q) andFilters.push({ $text: { $search: q } });
 
-    // Topic filter (case-insensitive)
     if (topic) andFilters.push({ topics: { $in: [new RegExp(`^${topic.trim()}$`, 'i')] } });
 
-    // Difficulty filter (case-insensitive)
     if (difficulty) andFilters.push({ difficulty: { $regex: new RegExp(`^${difficulty.trim()}$`, 'i') } });
 
-    // Tags filter (case-insensitive)
     if (tags) {
       const tagArray = tags.split(',').map(t => new RegExp(`^${t.trim()}$`, 'i'));
       andFilters.push({ tags: { $in: tagArray } });
@@ -45,8 +38,6 @@ const listProblems = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    console.log("MongoDB filter used:", JSON.stringify(filter, null, 2));
-    console.log("Problems found:", problems.length);
 
     res.json(problems);
   } catch (err) {
@@ -58,7 +49,7 @@ const listProblems = async (req, res, next) => {
 const getProblem = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!new mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: 'Invalid problem ID' });
     }
 

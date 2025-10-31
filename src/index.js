@@ -19,9 +19,7 @@ app.use('/api/problems', problemRoutes);
 app.use('/api/contests', contestRoutes);
 app.use('/api/submissions', submissionRoutes);
 
-
 app.use(errorHandler);
-
 const PORT = process.env.PORT || 4000;
 
 connectDB(process.env.MONGO_URI).then(() => {

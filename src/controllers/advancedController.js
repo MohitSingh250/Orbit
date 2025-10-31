@@ -1,4 +1,5 @@
-// src/controllers/advancedController.js
+// COMPLETE FIXED VERSION - problemController.js
+
 const mongoose = require('mongoose');
 const Problem = require('../models/Problem');
 const Submission = require('../models/Submission');
@@ -14,8 +15,137 @@ const getUserStreak = async (req, res, next) => {
       longestStreak: user.longestStreak || 0,
       lastSolvedAt: user.lastSolvedAt || null
     });
-    console.log("my streak is 50")
   } catch (err) {
+    next(err);
+  }
+};
+
+const getUserDashboard = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    console.log("🔍 Raw user.solvedProblems:", user.solvedProblems);
+
+    // 🔹 Get accuracy
+    const agg = await Submission.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+      { $group: { _id: '$isCorrect', count: { $sum: 1 } } }
+    ]);
+
+    let correct = 0, total = 0;
+    agg.forEach(a => {
+      total += a.count;
+      if (a._id === true) correct = a.count;
+    });
+    const accuracy = total === 0 ? 0 : (correct / total) * 100;
+
+    // 🔹 Topic stats
+    const topicAgg = await Submission.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+      {
+        $lookup: {
+          from: 'problems',
+          localField: 'problemId',
+          foreignField: '_id',
+          as: 'problem'
+        }
+      },
+      { $unwind: '$problem' },
+      { $unwind: { path: '$problem.topics', preserveNullAndEmptyArrays: true } },
+      { $group: { _id: { topic: '$problem.topics', isCorrect: '$isCorrect' }, count: { $sum: 1 } } }
+    ]);
+
+    const topicStats = {};
+    topicAgg.forEach(r => {
+      const t = r._id.topic || 'Unknown';
+      topicStats[t] = topicStats[t] || { attempts: 0, correct: 0 };
+      topicStats[t].attempts += r.count;
+      if (r._id.isCorrect === true) topicStats[t].correct += r.count;
+    });
+
+    Object.keys(topicStats).forEach(t => {
+      topicStats[t].accuracy = topicStats[t].attempts === 0 ? 0 :
+        Number(((topicStats[t].correct / topicStats[t].attempts) * 100).toFixed(2));
+    });
+
+    // 🔥 FIX: Handle both old and new solvedProblems structure
+    let solvedProblemsArray = [];
+    
+    if (user.solvedProblems && user.solvedProblems.length > 0) {
+      // Check if first item has problemId property (new structure)
+      const firstItem = user.solvedProblems[0];
+      
+      if (firstItem.problemId) {
+        // New structure: {problemId, solvedAt}
+        solvedProblemsArray = user.solvedProblems;
+      } else if (mongoose.Types.ObjectId.isValid(firstItem)) {
+        // Old structure: just ObjectIds
+        // Convert to new structure
+        solvedProblemsArray = user.solvedProblems.map(id => ({
+          problemId: id,
+          solvedAt: new Date() // Use current date as fallback
+        }));
+      }
+    }
+
+    console.log("🔍 Processed solvedProblemsArray:", solvedProblemsArray);
+
+    // Populate problem details with solvedAt dates
+    const solvedProblemsWithDates = await Promise.all(
+      solvedProblemsArray.map(async (entry) => {
+        const problemId = entry.problemId || entry;
+        const problem = await Problem.findById(problemId)
+          .select('title difficulty topics')
+          .lean();
+        
+        if (!problem) {
+          console.log("⚠️ Problem not found:", problemId);
+          return null;
+        }
+        
+        return {
+          ...problem,
+          solvedAt: entry.solvedAt || new Date() // ✅ Include the solvedAt timestamp
+        };
+      })
+    );
+
+    // Filter out null values (deleted problems)
+    const validSolvedProblems = solvedProblemsWithDates.filter(Boolean);
+
+    console.log("✅ Valid solved problems count:", validSolvedProblems.length);
+    console.log("✅ First solved problem:", validSolvedProblems[0]);
+
+    // 🔹 Count by difficulty
+    const easySolved = validSolvedProblems.filter(p => p.difficulty === 'easy').length;
+    const mediumSolved = validSolvedProblems.filter(p => p.difficulty === 'medium').length;
+    const hardSolved = validSolvedProblems.filter(p => p.difficulty === 'hard').length;
+
+    const notes = (user.notes || []).map(n => ({
+      problemId: n.problemId,
+      note: n.note,
+      createdAt: n.createdAt
+    }));
+
+    const bookmarks = user.bookmarks || [];
+
+    res.json({
+      username: user.username,
+      rating: user.rating,
+      totalSolved: validSolvedProblems.length,
+      easySolved,
+      mediumSolved,
+      hardSolved,
+      accuracy: Number(accuracy.toFixed(2)),
+      topicStats,
+      solvedProblems: validSolvedProblems, // ✅ Now includes solvedAt for each problem
+      notes,
+      bookmarks
+    });
+  } catch (err) {
+    console.error("❌ Dashboard error:", err);
     next(err);
   }
 };
@@ -34,7 +164,6 @@ const listProblems = async (req, res, next) => {
     }
 
     const filter = andFilters.length ? { $and: andFilters } : {};
-
     const skip = (Math.max(1, page) - 1) * limit;
 
     const problems = await Problem.find(filter)
@@ -43,26 +172,21 @@ const listProblems = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    console.log("Final filter:", JSON.stringify(filter, null, 2));
-    console.log("Problems found:", problems.length);
-
     res.json(problems);
   } catch (err) {
     next(err);
   }
 };
 
-
 const getProblemDetail = async (req, res, next) => {
   try {
     const { id } = req.params;
-    if (!new mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid problem id' });
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: 'Invalid problem id' });
 
     const problem = await Problem.findById(id).populate('similarProblems', 'title difficulty topics').lean();
     if (!problem) return res.status(404).json({ message: 'Problem not found' });
 
     const stats = await getProblemStats(id);
-    console.log("get id problem")
     res.json({ ...problem, stats });
   } catch (err) {
     next(err);
@@ -165,7 +289,7 @@ const toggleBookmark = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const { problemId } = req.body;
-    if (!new mongoose.Types.ObjectId.isValid(problemId)) return res.status(400).json({ message: 'Invalid problemId' });
+    if (!mongoose.Types.ObjectId.isValid(problemId)) return res.status(400).json({ message: 'Invalid problemId' });
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -196,7 +320,6 @@ const getBookmarks = async (req, res, next) => {
 
 const getDailyProblem = async (req, res, next) => {
   try {
-    console.log("Daily problem route hit");
     const dateKey = new Date().toISOString().slice(0, 10);
     const count = await Problem.countDocuments();
     if (count === 0) return res.status(404).json({ message: 'No problems available' });
@@ -205,77 +328,6 @@ const getDailyProblem = async (req, res, next) => {
     const idx = seed % count;
     const problem = await Problem.findOne().skip(idx).lean();
     res.json(problem);
-  } catch (err) {
-    next(err);
-  }
-};
-
-// 7) User dashboard
-const getUserDashboard = async (req, res, next) => {
-  try {
-    const userId = req.user._id;
-    const user = await User.findById(userId)
-      .populate('solvedProblems', 'title difficulty topics')
-      .lean();
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    const agg = await Submission.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
-      { $group: { _id: '$isCorrect', count: { $sum: 1 } } }
-    ]);
-
-    let correct = 0, total = 0;
-    agg.forEach(a => {
-      total += a.count;
-      if (a._id === true) correct = a.count;
-    });
-    const accuracy = total === 0 ? 0 : (correct / total) * 100;
-
-    const topicAgg = await Submission.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
-      {
-        $lookup: {
-          from: 'problems',
-          localField: 'problemId',
-          foreignField: '_id',
-          as: 'problem'
-        }
-      },
-      { $unwind: '$problem' },
-      { $unwind: { path: '$problem.topics', preserveNullAndEmptyArrays: true } },
-      { $group: { _id: { topic: '$problem.topics', isCorrect: '$isCorrect' }, count: { $sum: 1 } } }
-    ]);
-
-    const topicStats = {};
-    topicAgg.forEach(r => {
-      const t = r._id.topic || 'Unknown';
-      topicStats[t] = topicStats[t] || { attempts: 0, correct: 0 };
-      topicStats[t].attempts += r.count;
-      if (r._id.isCorrect === true) topicStats[t].correct += r.count;
-    });
-
-    Object.keys(topicStats).forEach(t => {
-      topicStats[t].accuracy = topicStats[t].attempts === 0 ? 0 :
-        Number(((topicStats[t].correct / topicStats[t].attempts) * 100).toFixed(2));
-    });
-
-    const notes = (user.notes || []).map(n => ({
-      problemId: n.problemId,
-      note: n.note,
-      createdAt: n.createdAt
-    }));
-    const bookmarks = user.bookmarks || [];
-
-    res.json({
-      username: user.username,
-      rating: user.rating,
-      totalSolved: (user.solvedProblems || []).length,
-      accuracy: Number(accuracy.toFixed(2)),
-      topicStats,
-      solvedProblems: user.solvedProblems,
-      notes,
-      bookmarks
-    });
   } catch (err) {
     next(err);
   }

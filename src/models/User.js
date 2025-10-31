@@ -12,7 +12,9 @@ const UserSchema = new mongoose.Schema({
   passwordHash: { type: String, required: true },
   roles: { type: [String], default: ['student'] },
   rating: { type: Number, default: 1500 },
-  solvedProblems: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }],
+  solvedProblems: [{
+  problemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Problem' },
+  solvedAt: { type: Date, default: Date.now }}],
   contestsParticipated: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Contest' }],
   notes: [NoteSchema],
   bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }],
