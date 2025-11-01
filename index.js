@@ -1,14 +1,14 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const connectDB = require('./config/db');
-const errorHandler = require('./middlewares/errorHandler');
+const connectDB = require('./src/config/db');
+const errorHandler = require('./src/middlewares/errorHandler');
 
-const authRoutes = require('./routes/auth');
-const problemRoutes = require('./routes/problems');
-const contestRoutes = require('./routes/contests');
-const submissionRoutes = require('./routes/submissions');
-const advancedRoutes = require('./routes/advanced');
+const authRoutes = require('./src/routes/auth');
+const problemRoutes = require('./src/routes/problems');
+const contestRoutes = require('./src/routes/contests');
+const submissionRoutes = require('./src/routes/submissions');
+const advancedRoutes = require('./src/routes/advanced');
 
 const app = express();
 app.use(cors());

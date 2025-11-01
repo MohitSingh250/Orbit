@@ -26,9 +26,6 @@ const getUserDashboard = async (req, res, next) => {
     const user = await User.findById(userId).lean();
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    console.log("🔍 Raw user.solvedProblems:", user.solvedProblems);
-
-    // 🔹 Get accuracy
     const agg = await Submission.aggregate([
       { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       { $group: { _id: '$isCorrect', count: { $sum: 1 } } }
@@ -40,8 +37,6 @@ const getUserDashboard = async (req, res, next) => {
       if (a._id === true) correct = a.count;
     });
     const accuracy = total === 0 ? 0 : (correct / total) * 100;
-
-    // 🔹 Topic stats
     const topicAgg = await Submission.aggregate([
       { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       {
@@ -90,8 +85,6 @@ const getUserDashboard = async (req, res, next) => {
       }
     }
 
-    console.log("🔍 Processed solvedProblemsArray:", solvedProblemsArray);
-
     // Populate problem details with solvedAt dates
     const solvedProblemsWithDates = await Promise.all(
       solvedProblemsArray.map(async (entry) => {
@@ -101,7 +94,6 @@ const getUserDashboard = async (req, res, next) => {
           .lean();
         
         if (!problem) {
-          console.log("⚠️ Problem not found:", problemId);
           return null;
         }
         
@@ -115,10 +107,6 @@ const getUserDashboard = async (req, res, next) => {
     // Filter out null values (deleted problems)
     const validSolvedProblems = solvedProblemsWithDates.filter(Boolean);
 
-    console.log("✅ Valid solved problems count:", validSolvedProblems.length);
-    console.log("✅ First solved problem:", validSolvedProblems[0]);
-
-    // 🔹 Count by difficulty
     const easySolved = validSolvedProblems.filter(p => p.difficulty === 'easy').length;
     const mediumSolved = validSolvedProblems.filter(p => p.difficulty === 'medium').length;
     const hardSolved = validSolvedProblems.filter(p => p.difficulty === 'hard').length;
