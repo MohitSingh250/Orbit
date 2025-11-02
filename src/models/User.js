@@ -21,7 +21,9 @@ const UserSchema = new mongoose.Schema({
   currentStreak: { type: Number, default: 0 },      
   longestStreak: { type: Number, default: 0 },      
   lastSolvedAt: { type: Date },                     
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  location: { type: String, default: '' },
+  avatar: { type: String, default: '' }
 });
 
 module.exports = mongoose.model('User', UserSchema);

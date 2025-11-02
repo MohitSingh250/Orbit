@@ -95,10 +95,10 @@ const updateProfile = async (req, res, next) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const { username, country, avatar, oldPassword, newPassword } = req.body;
+    const { username, location, avatar, oldPassword, newPassword } = req.body;
 
     if (username) user.username = username;
-    if (country) user.country = country;
+    if (location) user.location = location;
     if (avatar) user.avatar = avatar;
 
     // Password update (only if both old & new provided)
@@ -117,7 +117,7 @@ const updateProfile = async (req, res, next) => {
       message: "Profile updated successfully",
       user: {
         username: user.username,
-        country: user.country,
+        location: user.location,
         avatar: user.avatar,
       },
     });
@@ -127,9 +127,11 @@ const updateProfile = async (req, res, next) => {
 };
 
 
-const me = (req, res, next) => {
+const me = async (req, res, next) => {
   try {
-    res.json(req.user);
+    const user = await User.findById(req.user._id).select("-passwordHash");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
   } catch (err) {
     next(err);
   }
