@@ -126,6 +126,22 @@ const updateProfile = async (req, res, next) => {
   }
 };
 
+const uploadAvatar = async (req, res) => {
+  try {
+    if (!req.file || !req.file.path)
+      return res.status(400).json({ message: "No image uploaded" });
+
+    const user = req.user;
+    user.avatar = req.file.path; // Cloudinary URL
+    await user.save();
+
+    res.json({ message: "Avatar uploaded", user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Upload failed" });
+  }
+};
+
 
 const me = async (req, res, next) => {
   try {
@@ -140,4 +156,4 @@ const me = async (req, res, next) => {
 
 
 
-module.exports = { signup, login, me ,googleLogin,updateProfile };
+module.exports = { signup, login, me ,googleLogin,updateProfile,uploadAvatar };
