@@ -90,6 +90,41 @@ const googleLogin = async (req, res, next) => {
   }
 };
 
+const updateProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const { username, country, avatar, oldPassword, newPassword } = req.body;
+
+    if (username) user.username = username;
+    if (country) user.country = country;
+    if (avatar) user.avatar = avatar;
+
+    // Password update (only if both old & new provided)
+    if (oldPassword && newPassword) {
+      const valid = await bcrypt.compare(oldPassword, user.passwordHash);
+      if (!valid)
+        return res.status(400).json({ message: "Old password incorrect" });
+
+      const salt = await bcrypt.genSalt(10);
+      user.passwordHash = await bcrypt.hash(newPassword, salt);
+    }
+
+    await user.save();
+
+    res.json({
+      message: "Profile updated successfully",
+      user: {
+        username: user.username,
+        country: user.country,
+        avatar: user.avatar,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
 
 const me = (req, res, next) => {
@@ -103,4 +138,4 @@ const me = (req, res, next) => {
 
 
 
-module.exports = { signup, login, me ,googleLogin};
+module.exports = { signup, login, me ,googleLogin,updateProfile };
