@@ -15,6 +15,7 @@ createdAt: { type: Date, default: Date.now }
 
 SubmissionSchema.index({ problemId: 1 });
 SubmissionSchema.index({ userId: 1, problemId: 1 });
+SubmissionSchema.index({ contestId: 1, userId: 1 });
 
 
 module.exports = mongoose.model('Submission', SubmissionSchema);
