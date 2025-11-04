@@ -3,8 +3,7 @@ const Problem = require("../models/Problem");
 
 const createProblem = async (req, res, next) => {
   try {
-    const payload = req.body;
-    const problem = await Problem.create(payload);
+    const problem = await Problem.create(req.body);
     res.status(201).json(problem);
   } catch (err) {
     next(err);
@@ -13,27 +12,31 @@ const createProblem = async (req, res, next) => {
 
 const listProblems = async (req, res, next) => {
   try {
-    const { topic, difficulty, tags, q, page = 1, limit = 20 } = req.query;
+    const { q, topic, tags, difficulty, page = 1, limit = 20 } = req.query;
 
     const filters = {};
-    if (q) {
-      filters.$or = [
-        { title: { $regex: q, $options: "i" } },
-        { statement: { $regex: q, $options: "i" } },
-      ];
+
+    if (q && q.trim()) {
+      const regex = new RegExp(q.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      filters.$or = [{ title: regex }, { statement: regex }];
     }
 
-    if (topic) {
-      filters.topics = { $in: [new RegExp(topic.trim(), "i")] };
+    if (topic && topic.trim()) {
+      const regex = new RegExp(topic.trim(), "i");
+      filters.topics = { $elemMatch: regex };
     }
 
-    if (difficulty) {
-      filters.difficulty = { $regex: `^${difficulty.trim()}$`, $options: "i" };
+    if (tags && tags.trim()) {
+      const tagArray = tags
+        .split(",")
+        .map((t) => new RegExp(t.trim(), "i"))
+        .filter(Boolean);
+      filters.tags = { $in: tagArray };
     }
 
-    if (tags) {
-      const tagArray = tags.split(",").map((t) => t.trim());
-      filters.tags = { $in: tagArray.map((t) => new RegExp(t, "i")) };
+    if (difficulty && difficulty.trim()) {
+      const regex = new RegExp(difficulty.trim(), "i");
+      filters.difficulty = regex;
     }
 
     const skip = (Math.max(1, page) - 1) * limit;
