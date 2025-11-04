@@ -15,7 +15,6 @@ const UserSchema = new mongoose.Schema({
   solvedProblems: [{
   problemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Problem' },
   solvedAt: { type: Date, default: Date.now }}],
-  contestsParticipated: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Contest' }],
   notes: [NoteSchema],
   bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }],
   currentStreak: { type: Number, default: 0 },      
@@ -23,7 +22,17 @@ const UserSchema = new mongoose.Schema({
   lastSolvedAt: { type: Date },                     
   createdAt: { type: Date, default: Date.now },
   location: { type: String, default: '' },
-  avatar: { type: String, default: '' }
+  avatar: { type: String, default: '' },
+  
+  contestHistory: [{
+  contestId: { type: mongoose.Schema.Types.ObjectId, ref: 'Contest' },
+  score: Number,
+  rank: Number,
+  ratingBefore: Number,
+  ratingAfter: Number,
+  participatedAt: { type: Date, default: Date.now }
+}],
+
 });
 
 module.exports = mongoose.model('User', UserSchema);
