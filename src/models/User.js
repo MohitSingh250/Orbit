@@ -22,17 +22,7 @@ const UserSchema = new mongoose.Schema({
   lastSolvedAt: { type: Date },                     
   createdAt: { type: Date, default: Date.now },
   location: { type: String, default: '' },
-  avatar: { type: String, default: '' },
-  
-  contestHistory: [{
-  contestId: { type: mongoose.Schema.Types.ObjectId, ref: 'Contest' },
-  score: Number,
-  rank: Number,
-  ratingBefore: Number,
-  ratingAfter: Number,
-  participatedAt: { type: Date, default: Date.now }
-}],
-
+  avatar: { type: String, default: '' }
 });
 
 module.exports = mongoose.model('User', UserSchema);

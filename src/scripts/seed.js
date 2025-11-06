@@ -6,7 +6,6 @@ const connectDB = require('../config/db');
 const User = require('../models/User');
 const Problem = require('../models/Problem');
 const Submission = require('../models/Submission');
-const Contest = require('../models/Contest');
 
 async function seed() {
   await connectDB(process.env.MONGO_URI);
@@ -17,7 +16,6 @@ async function seed() {
   await User.deleteMany({});
   await Problem.deleteMany({});
   await Submission.deleteMany({});
-  await Contest.deleteMany({});
   console.log('🧹 Cleared old collections');
 
   // --- Create admin ---
@@ -66,9 +64,10 @@ async function seed() {
     const difficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
     const topic = topics[Math.floor(Math.random() * topics.length)];
     const inputType = Math.random() < 0.5 ? 'mcq_single' : 'numeric';
-    const correctAnswer = inputType === 'mcq_single'
-      ? ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)]
-      : (Math.random() * 10).toFixed(2);
+    const correctAnswer =
+      inputType === 'mcq_single'
+        ? ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)]
+        : (Math.random() * 10).toFixed(2);
 
     const problem = await Problem.create({
       title,
@@ -78,14 +77,15 @@ async function seed() {
       difficulty,
       inputType,
       points: Math.floor(Math.random() * 5) + 1,
-      options: inputType === 'mcq_single'
-        ? [
-            { id: 'A', text: 'Option A' },
-            { id: 'B', text: 'Option B' },
-            { id: 'C', text: 'Option C' },
-            { id: 'D', text: 'Option D' }
-          ]
-        : [],
+      options:
+        inputType === 'mcq_single'
+          ? [
+              { id: 'A', text: 'Option A' },
+              { id: 'B', text: 'Option B' },
+              { id: 'C', text: 'Option C' },
+              { id: 'D', text: 'Option D' }
+            ]
+          : [],
       correctAnswer
     });
 
@@ -112,7 +112,6 @@ async function seed() {
         createdAt: new Date()
       });
 
-      // Update user's solved problems if correct
       if (isCorrect) {
         user.solvedProblems.push({
           problemId: problem._id,
@@ -121,7 +120,6 @@ async function seed() {
       }
     }
 
-    // Add notes + bookmarks
     const bookmarkedProblem = problems[Math.floor(Math.random() * problems.length)];
     user.notes.push({
       problemId: bookmarkedProblem._id,
@@ -132,25 +130,6 @@ async function seed() {
 
     await user.save();
     console.log(`🧩 Added solved problems + notes for ${user.username}`);
-  }
-
-  console.log('📝 Created user submissions');
-
-  // --- Create contests ---
-  for (let i = 1; i <= 3; i++) {
-    const contestProblems = problems.slice(i * 5, i * 5 + 5);
-    const startTime = new Date(Date.now() + i * 86400000);
-    const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
-
-    const contest = await Contest.create({
-      title: `Contest #${i}`,
-      problems: contestProblems.map(p => p._id),
-      startTime,
-      endTime,
-      participants: users.map(u => u._id)
-    });
-
-    console.log(`🏆 Created contest: ${contest.title}`);
   }
 
   console.log('✅ Seeding complete!');

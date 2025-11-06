@@ -6,7 +6,6 @@ const errorHandler = require('./src/middlewares/errorHandler');
 
 const authRoutes = require('./src/routes/auth');
 const problemRoutes = require('./src/routes/problems');
-const contestRoutes = require('./src/routes/contests');
 const submissionRoutes = require('./src/routes/submissions');
 const advancedRoutes = require('./src/routes/advanced');
 
@@ -16,7 +15,6 @@ app.use(express.json());
 app.use('/api', advancedRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
-app.use('/api/contests', contestRoutes);
 app.use('/api/submissions', submissionRoutes);
 
 app.use(errorHandler);

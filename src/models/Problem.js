@@ -17,10 +17,7 @@ points: { type: Number, default: 1 },
 hints: [{ level: Number, text: String }], 
 similarProblems: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }],
 solution: { type: String },
-createdAt: { type: Date, default: Date.now },
-contestExclusive: { type: Boolean, default: false },
-contestId: { type: mongoose.Schema.Types.ObjectId, ref: "Contest", required: function() { return this.contestExclusive; } },
-
+createdAt: { type: Date, default: Date.now }
 });
 
 ProblemSchema.index({ title: 'text', statement: 'text' });
