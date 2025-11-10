@@ -22,10 +22,15 @@ const signup = async (req, res, next) => {
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+      {expiresIn:"1m"}
+    );
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      {expiresIn:"2m"}
     );
 
-    res.status(201).json({ token });
+    res.status(201).json({ token,refreshToken });
   } catch (err) {
     next(err);
   }
@@ -43,14 +48,42 @@ const login = async (req, res, next) => {
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+      {expiresIn:"1m"}
+    );
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      {expiresIn:"2m"}
     );
 
-    res.json({ token });
+    res.json({ token,refreshToken });
   } catch (err) {
     next(err);
   }
 };
+
+const refresh = ()=>{
+  try{
+    const {refreshToken}=req.body;
+    if(!refreshToken){
+      return res.status(401).json({message:"No token provided"});
+    }
+    const payload=jwt.verify(refreshToken,process.env.JWT_SECRET);
+    const token = jwt.sign(
+      { id: payload.id },
+      process.env.JWT_SECRET,
+      {expiresIn:"1m"}
+    );
+    const newRefreshToken = jwt.sign(
+      { id: payload.id },
+      process.env.JWT_SECRET,
+      {expiresIn:"2m"}
+    );
+    res.json({token,refreshToken: newRefreshToken });
+  }catch(err){
+    return res.status(401).json({message:"Invalid token"});
+  }
+}
 
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -156,4 +189,4 @@ const me = async (req, res, next) => {
 
 
 
-module.exports = { signup, login, me ,googleLogin,updateProfile,uploadAvatar };
+module.exports = { signup, login, me ,googleLogin,updateProfile,uploadAvatar,refresh };

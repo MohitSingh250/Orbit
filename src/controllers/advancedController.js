@@ -128,7 +128,7 @@ const getUserDashboard = async (req, res, next) => {
       hardSolved,
       accuracy: Number(accuracy.toFixed(2)),
       topicStats,
-      solvedProblems: validSolvedProblems, // ✅ Now includes solvedAt for each problem
+      solvedProblems: validSolvedProblems, 
       notes,
       bookmarks
     });
@@ -137,34 +137,46 @@ const getUserDashboard = async (req, res, next) => {
     next(err);
   }
 };
-
 const listProblems = async (req, res, next) => {
   try {
-    const { topic, difficulty, q, tags, page = 1, limit = 20 } = req.query;
+    const { topic, difficulty, q, page = 1, limit = 20 } = req.query;
 
-    const andFilters = [];
-    if (q) andFilters.push({ $text: { $search: q } });
-    if (topic) andFilters.push({ topics: { $in: [new RegExp(`^${topic.trim()}$`, 'i')] } });
-    if (difficulty) andFilters.push({ difficulty: { $regex: new RegExp(`^${difficulty.trim()}$`, 'i') } });
-    if (tags) {
-      const tagArray = tags.split(',').map(t => new RegExp(`^${t.trim()}$`, 'i'));
-      andFilters.push({ tags: { $in: tagArray } });
+    const filter = {};
+
+    // 🔍 Partial text search (title + statement)
+    if (q && q.trim()) {
+      const regex = new RegExp(q.trim(), "i"); // case-insensitive partial match
+      filter.$or = [
+        { title: regex },
+        { statement: regex },
+      ];
     }
 
-    const filter = andFilters.length ? { $and: andFilters } : {};
-    const skip = (Math.max(1, page) - 1) * limit;
+    // 📘 Topic filter (array of strings)
+    if (topic && topic.trim()) {
+      filter.topics = { $regex: topic.trim(), $options: "i" };
+    }
+
+    // ⚙️ Difficulty filter
+    if (difficulty && difficulty.trim()) {
+      filter.difficulty = { $regex: `^${difficulty.trim()}$`, $options: "i" };
+    }
+
+    const skip = (Math.max(1, page) - 1) * Number(limit);
 
     const problems = await Problem.find(filter)
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit))
-      .sort({ createdAt: -1 })
       .lean();
 
     res.json(problems);
   } catch (err) {
+    console.error("Error in listProblems:", err);
     next(err);
   }
 };
+
 
 const getProblemDetail = async (req, res, next) => {
   try {

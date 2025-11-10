@@ -48,20 +48,30 @@ async function seed() {
       longestStreak: Math.floor(Math.random() * 20),
       solvedProblems: [],
       notes: [],
-      bookmarks: []
+      bookmarks: [],
     });
     users.push(user);
     console.log(`👤 Created user: ${user.username}`);
   }
 
-  // --- Create problems ---
-  const topics = ['Mechanics', 'Waves', 'Optics', 'Electricity', 'Thermodynamics', 'Math', 'CS'];
+  // --- Create problems (100 total) ---
+  const topics = [
+    'Mechanics',
+    'Waves',
+    'Optics',
+    'Electricity',
+    'Thermodynamics',
+    'Math',
+    'CS',
+  ];
   const difficulties = ['easy', 'medium', 'hard'];
   const problems = [];
 
-  for (let i = 1; i <= 30; i++) {
+  console.log('📚 Creating 100 problems...');
+  for (let i = 1; i <= 100; i++) {
     const title = `Problem #${i}`;
-    const difficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
+    const difficulty =
+      difficulties[Math.floor(Math.random() * difficulties.length)];
     const topic = topics[Math.floor(Math.random() * topics.length)];
     const inputType = Math.random() < 0.5 ? 'mcq_single' : 'numeric';
     const correctAnswer =
@@ -71,7 +81,7 @@ async function seed() {
 
     const problem = await Problem.create({
       title,
-      statement: `This is the problem statement for ${title}.`,
+      statement: `This is the problem statement for ${title}. It covers ${topic} at ${difficulty} level.`,
       topics: [topic],
       tags: ['practice', 'seed'],
       difficulty,
@@ -83,14 +93,15 @@ async function seed() {
               { id: 'A', text: 'Option A' },
               { id: 'B', text: 'Option B' },
               { id: 'C', text: 'Option C' },
-              { id: 'D', text: 'Option D' }
+              { id: 'D', text: 'Option D' },
             ]
           : [],
-      correctAnswer
+      correctAnswer,
+      createdAt: new Date(),
     });
 
     problems.push(problem);
-    console.log(`📘 Created problem: ${problem.title}`);
+    if (i % 10 === 0) console.log(`✅ Created ${i} problems...`);
   }
 
   // --- Create submissions + solvedProblems for users ---
@@ -109,22 +120,23 @@ async function seed() {
         isCorrect,
         score: isCorrect ? problem.points : 0,
         timeTakenMs: Math.floor(Math.random() * 20000),
-        createdAt: new Date()
+        createdAt: new Date(),
       });
 
       if (isCorrect) {
         user.solvedProblems.push({
           problemId: problem._id,
-          solvedAt: new Date()
+          solvedAt: new Date(),
         });
       }
     }
 
-    const bookmarkedProblem = problems[Math.floor(Math.random() * problems.length)];
+    const bookmarkedProblem =
+      problems[Math.floor(Math.random() * problems.length)];
     user.notes.push({
       problemId: bookmarkedProblem._id,
       note: `This is a note for ${bookmarkedProblem.title}`,
-      createdAt: new Date()
+      createdAt: new Date(),
     });
     user.bookmarks.push(bookmarkedProblem._id);
 
@@ -132,11 +144,11 @@ async function seed() {
     console.log(`🧩 Added solved problems + notes for ${user.username}`);
   }
 
-  console.log('✅ Seeding complete!');
+  console.log('✅ Seeding complete! 🚀');
   process.exit(0);
 }
 
-seed().catch(err => {
+seed().catch((err) => {
   console.error(err);
   process.exit(1);
 });
