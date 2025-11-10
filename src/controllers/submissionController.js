@@ -5,7 +5,6 @@ const Contest = require('../models/Contest');
 const User = require('../models/User');
 const compareAnswers = require('../utils/compareAnswers');
 
-
 const submitAnswer = async (req, res, next) => {
   try {
     const { problemId, contestId, answer } = req.body;
@@ -31,6 +30,7 @@ const submitAnswer = async (req, res, next) => {
         return res.status(403).json({ message: 'Join contest before submitting' });
     }
 
+    // Compare answer
     const { correct, score, manual } = compareAnswers(problem, answer);
 
     const session = await mongoose.startSession();
@@ -141,11 +141,10 @@ const submitAnswer = async (req, res, next) => {
   }
 };
 
-
 const getSubmissionsForUser = async (req, res, next) => {
   try {
     const submissions = await Submission.find({ userId: req.params.userId })
-      .sort({ submittedAt: -1 })
+      .sort({ createdAt: -1 })
       .limit(200);
     res.json(submissions);
   } catch (err) {
