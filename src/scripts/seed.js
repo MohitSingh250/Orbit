@@ -9,10 +9,9 @@ const Submission = require('../models/Submission');
 
 async function seed() {
   await connectDB(process.env.MONGO_URI);
-
   console.log('🚀 Starting database seeding...');
 
-  // --- Clear existing data ---
+  // --- Clear old data ---
   await User.deleteMany({});
   await Problem.deleteMany({});
   await Submission.deleteMany({});
@@ -51,60 +50,198 @@ async function seed() {
       bookmarks: [],
     });
     users.push(user);
-    console.log(`👤 Created user: ${user.username}`);
   }
+  console.log('👥 10 users created');
 
-  // --- Create problems (100 total) ---
-  const topics = [
+  // -------------------------- PROBLEMS --------------------------
+  console.log('📘 Creating 50 conceptual, logical problems...');
+
+  const baseProblems = [
+    {
+      title: 'Friction Logic – Angle of Repose',
+      statement:
+        'A wooden block rests on a rough inclined plane. The angle of repose is 30°. If the plane is inclined at 25°, what happens when a small horizontal push is given?',
+      topics: ['Mechanics', 'Friction'],
+      tags: ['conceptual', 'logical'],
+      difficulty: 'easy',
+      inputType: 'mcq_single',
+      options: [
+        { id: 'A', text: 'Block moves up the plane' },
+        { id: 'B', text: 'Block moves down the plane' },
+        { id: 'C', text: 'Block remains at rest' },
+        { id: 'D', text: 'Block oscillates' },
+      ],
+      correctAnswer: 'C',
+      hints: [
+        { level: 1, text: 'Compare applied force with limiting friction.' },
+        { level: 2, text: 'tanθ < μ ⇒ remains at rest unless F > F_limiting.' },
+      ],
+      solution:
+        'At 25°, component of gravity < limiting friction ⇒ block stays at rest unless push exceeds friction limit.',
+      points: 2,
+    },
+    {
+      title: 'Electrostatics Logic – Field Between Equal Charges',
+      statement:
+        'Two equal positive charges +Q are fixed at x = +a and x = −a. Find where the net electric field on the x-axis is zero.',
+      topics: ['Electrostatics'],
+      tags: ['conceptual'],
+      difficulty: 'easy',
+      inputType: 'mcq_single',
+      options: [
+        { id: 'A', text: 'At x = 0' },
+        { id: 'B', text: 'At x = ±a/2' },
+        { id: 'C', text: 'At x > a or x < −a' },
+        { id: 'D', text: 'No such point' },
+      ],
+      correctAnswer: 'C',
+      hints: [
+        { level: 1, text: 'Check direction of electric field between and outside charges.' },
+        { level: 2, text: 'Between them fields add, outside they oppose.' },
+      ],
+      solution: 'Field cancels only outside the region between the charges.',
+      points: 1,
+    },
+    {
+      title: 'Thermal Expansion Logic',
+      statement:
+        'A brass ring just fits over a steel rod at 20°C. On heating the system uniformly, what happens?',
+      topics: ['Thermodynamics'],
+      tags: ['logic'],
+      difficulty: 'easy',
+      inputType: 'mcq_single',
+      options: [
+        { id: 'A', text: 'Ring tightens' },
+        { id: 'B', text: 'Ring loosens' },
+        { id: 'C', text: 'No change' },
+        { id: 'D', text: 'Depends on time' },
+      ],
+      correctAnswer: 'B',
+      hints: [
+        { level: 1, text: 'Compare αbrass and αsteel.' },
+        { level: 2, text: 'Higher expansion coefficient ⇒ expands more.' },
+      ],
+      solution: 'Brass expands more ⇒ ring loosens.',
+      points: 1,
+    },
+    {
+      title: 'Work-Energy Logic – Spring Compression',
+      statement:
+        'A spring (k = 100 N/m) is compressed by 10 cm. The energy stored is how many joules?',
+      topics: ['Mechanics', 'Work-Energy'],
+      tags: ['numeric'],
+      difficulty: 'easy',
+      inputType: 'numeric',
+      correctAnswer: 0.5,
+      numericTolerance: 0.01,
+      hints: [
+        { level: 1, text: 'Use U = ½kx².' },
+        { level: 2, text: 'Convert cm to meters.' },
+      ],
+      solution: 'U = ½×100×(0.1)² = 0.5 J.',
+      points: 2,
+    },
+    {
+      title: 'Optics Logic – Image Shift in Mirror',
+      statement:
+        'A plane mirror is moved by 2 cm toward a stationary object. The image shifts by how much (in cm)?',
+      topics: ['Optics'],
+      tags: ['logical'],
+      difficulty: 'easy',
+      inputType: 'numeric',
+      correctAnswer: 4,
+      numericTolerance: 0.01,
+      hints: [
+        { level: 1, text: 'Image shift = 2 × mirror movement.' },
+      ],
+      solution: 'The image moves twice the mirror distance = 4 cm.',
+      points: 1,
+    },
+    {
+      title: 'Modern Physics Logic – Photon Energy',
+      statement:
+        'What is the energy (in eV) of a photon of wavelength 400 nm? (hc = 1240 eV·nm)',
+      topics: ['Modern Physics', 'Photon'],
+      tags: ['numeric', 'logical'],
+      difficulty: 'medium',
+      inputType: 'numeric',
+      correctAnswer: 3.1,
+      numericTolerance: 0.1,
+      hints: [
+        { level: 1, text: 'E = hc/λ.' },
+      ],
+      solution: 'E = 1240/400 = 3.1 eV.',
+      points: 2,
+    },
+  ];
+
+  // --- Generate 44 additional logical problems ---
+  const topicPool = [
     'Mechanics',
+    'Electrostatics',
+    'Current Electricity',
+    'Magnetism',
     'Waves',
     'Optics',
-    'Electricity',
     'Thermodynamics',
-    'Math',
-    'CS',
+    'Modern Physics',
   ];
-  const difficulties = ['easy', 'medium', 'hard'];
-  const problems = [];
+  const diffPool = ['easy', 'medium', 'hard'];
+  const typePool = ['mcq_single', 'numeric', 'manual'];
 
-  console.log('📚 Creating 100 problems...');
-  for (let i = 1; i <= 100; i++) {
-    const title = `Problem #${i}`;
-    const difficulty =
-      difficulties[Math.floor(Math.random() * difficulties.length)];
-    const topic = topics[Math.floor(Math.random() * topics.length)];
-    const inputType = Math.random() < 0.5 ? 'mcq_single' : 'numeric';
-    const correctAnswer =
-      inputType === 'mcq_single'
-        ? ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)]
-        : (Math.random() * 10).toFixed(2);
+  while (baseProblems.length < 50) {
+    const topic = topicPool[Math.floor(Math.random() * topicPool.length)];
+    const diff = diffPool[Math.floor(Math.random() * diffPool.length)];
+    const type = typePool[Math.floor(Math.random() * typePool.length)];
 
-    const problem = await Problem.create({
-      title,
-      statement: `This is the problem statement for ${title}. It covers ${topic} at ${difficulty} level.`,
+    const p = {
+      title: `${topic} Logical Problem ${baseProblems.length + 1}`,
+      statement: `A conceptual question from ${topic} that requires reasoning at a ${diff} level.`,
       topics: [topic],
-      tags: ['practice', 'seed'],
-      difficulty,
-      inputType,
-      points: Math.floor(Math.random() * 5) + 1,
-      options:
-        inputType === 'mcq_single'
-          ? [
-              { id: 'A', text: 'Option A' },
-              { id: 'B', text: 'Option B' },
-              { id: 'C', text: 'Option C' },
-              { id: 'D', text: 'Option D' },
-            ]
-          : [],
-      correctAnswer,
+      tags: ['logical', 'conceptual'],
+      difficulty: diff,
+      badges: ['advanced-logic'],
+      sources: ['Physics-inspired seed'],
+      points: Math.floor(Math.random() * 3) + 1,
       createdAt: new Date(),
-    });
+      hints: [
+        { level: 1, text: 'Think qualitatively first.' },
+        { level: 2, text: 'Apply key principles of the topic.' },
+      ],
+      solution: 'Logical reasoning gives the correct conclusion.',
+    };
 
-    problems.push(problem);
-    if (i % 10 === 0) console.log(`✅ Created ${i} problems...`);
+    if (type === 'mcq_single') {
+      Object.assign(p, {
+        inputType: 'mcq_single',
+        options: [
+          { id: 'A', text: 'Option A' },
+          { id: 'B', text: 'Option B' },
+          { id: 'C', text: 'Option C' },
+          { id: 'D', text: 'Option D' },
+        ],
+        correctAnswer: ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)],
+      });
+    } else if (type === 'numeric') {
+      Object.assign(p, {
+        inputType: 'numeric',
+        correctAnswer: (Math.random() * 10).toFixed(2),
+        numericTolerance: 0.1,
+      });
+    } else {
+      Object.assign(p, {
+        inputType: 'manual',
+        correctAnswer: 'Explain reasoning step by step.',
+      });
+    }
+
+    baseProblems.push(p);
   }
 
-  // --- Create submissions + solvedProblems for users ---
+  const problems = await Problem.insertMany(baseProblems);
+  console.log(`✅ Inserted ${problems.length} logical problems`);
+
+  // --- Create submissions for users ---
   for (const user of users) {
     for (let j = 0; j < 5; j++) {
       const problem = problems[Math.floor(Math.random() * problems.length)];
@@ -131,20 +268,11 @@ async function seed() {
       }
     }
 
-    const bookmarkedProblem =
-      problems[Math.floor(Math.random() * problems.length)];
-    user.notes.push({
-      problemId: bookmarkedProblem._id,
-      note: `This is a note for ${bookmarkedProblem.title}`,
-      createdAt: new Date(),
-    });
-    user.bookmarks.push(bookmarkedProblem._id);
-
     await user.save();
-    console.log(`🧩 Added solved problems + notes for ${user.username}`);
   }
 
-  console.log('✅ Seeding complete! 🚀');
+  console.log('✅ Added submissions and solved data');
+  console.log('🎯 Seeding complete! 🚀');
   process.exit(0);
 }
 
