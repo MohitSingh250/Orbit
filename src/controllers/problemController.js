@@ -56,11 +56,22 @@ const listProblems = async (req, res, next) => {
   }
 };
 
+const randomProblem = async (req, res, next) => { 
+  try {
+    const count = await Problem.countDocuments();
+    const random = Math.floor(Math.random() * count);
+    const problem = await Problem.findOne().skip(random).lean();
+    res.json(problem);
+  } catch (err) {
+    next(err);
+  }
+}
+
 const getProblem = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid problem ID" });
+      return res.status(400).json({ error: "Invalid problem id" });
     }
 
     const problem = await Problem.findById(id).lean();
@@ -72,4 +83,6 @@ const getProblem = async (req, res, next) => {
   }
 };
 
-module.exports = { createProblem, listProblems, getProblem };
+
+
+module.exports = { createProblem, listProblems, getProblem ,randomProblem};

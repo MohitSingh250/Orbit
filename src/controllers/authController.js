@@ -22,12 +22,12 @@ const signup = async (req, res, next) => {
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET,
-      {expiresIn:"1m"}
+      {expiresIn:"1d"}
     );
     const refreshToken = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET,
-      {expiresIn:"2m"}
+      {expiresIn:"7d"}
     );
 
     res.status(201).json({ token,refreshToken });
@@ -48,12 +48,12 @@ const login = async (req, res, next) => {
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET,
-      {expiresIn:"1m"}
+      {expiresIn:"1d"}
     );
     const refreshToken = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET,
-      {expiresIn:"2m"}
+      {expiresIn:"7d"}
     );
 
     res.json({ token,refreshToken });
@@ -72,14 +72,15 @@ const refresh = ()=>{
     const token = jwt.sign(
       { id: payload.id },
       process.env.JWT_SECRET,
-      {expiresIn:"1m"}
+      {expiresIn:"1d"}
     );
     const newRefreshToken = jwt.sign(
       { id: payload.id },
       process.env.JWT_SECRET,
-      {expiresIn:"2m"}
+      {expiresIn:"7d"}
     );
     res.json({token,refreshToken: newRefreshToken });
+    req.user={ id: payload.id };
   }catch(err){
     return res.status(401).json({message:"Invalid token"});
   }

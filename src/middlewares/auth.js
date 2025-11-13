@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { refresh } = require('../controllers/authController');
 
 const auth = async (req, res, next) => {
   const header = req.headers.authorization;
@@ -11,7 +12,11 @@ const auth = async (req, res, next) => {
   const token = header.split(' ')[1];
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    let payload = jwt.verify(token, process.env.JWT_SECRET);
+    if(!payload){
+      const {token, refreshToken} = await refresh()
+      payload = jwt.verify(token, process.env.JWT_SECRET);
+    }
   
     const user = await User.findById(payload.id).select('-passwordHash');
     if (!user) {
@@ -19,6 +24,7 @@ const auth = async (req, res, next) => {
     }
 
     req.user = user;
+    // req.jwt_tokens = { token, refreshToken };
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Invalid token' });
