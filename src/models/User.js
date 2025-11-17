@@ -10,7 +10,7 @@ const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true, index: true },
   email: { type: String, required: true, unique: true, index: true },
   passwordHash: { type: String, required: true },
-  roles: { type: [String], default: ['student'] },
+  roles: { type: [String], default: ['user'], index: true },
   rating: { type: Number, default: 1500 },
   solvedProblems: [{
   problemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Problem' },

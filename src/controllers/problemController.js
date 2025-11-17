@@ -57,6 +57,7 @@ const listProblems = async (req, res, next) => {
 };
 
 const randomProblem = async (req, res, next) => { 
+  console.log("randomProblem")
   try {
     const count = await Problem.countDocuments();
     const random = Math.floor(Math.random() * count);
@@ -68,6 +69,7 @@ const randomProblem = async (req, res, next) => {
 }
 
 const getProblem = async (req, res, next) => {
+  console.log("getProblem")
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
