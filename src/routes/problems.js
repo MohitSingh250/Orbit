@@ -4,6 +4,7 @@ const { auth, requireRole } = require('../middlewares/auth');
 
 const router = express.Router();
 
+router.post('/create-problem', auth, requireRole('admin'), createProblem);
 // Public endpoints
 router.get('/', listProblems);
 router.get('/random/problem', randomProblem);
