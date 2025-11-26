@@ -1,4 +1,5 @@
 const Contest = require("../models/Contest");
+const User = require("../models/User"); // Ensure User model is registered
 
 const getLeaderboard = async (req, res) => {
   try {

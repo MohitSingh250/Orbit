@@ -102,17 +102,35 @@ const getContests = async (req, res) => {
 // -------------------------------------------------------------
 // GET SINGLE CONTEST WITH POPULATIONS
 // -------------------------------------------------------------
+// -------------------------------------------------------------
+// GET SINGLE CONTEST WITH POPULATIONS (SECURE)
+// -------------------------------------------------------------
 const getContestById = async (req, res) => {
   try {
     const { contestId } = req.params;
 
+    // 1. Fetch contest WITHOUT problems first
     const contest = await Contest.findById(contestId)
-      .populate("problems")
       .populate("participants.userId", "username rating avatar")
       .lean();
 
     if (!contest) {
       return res.status(404).json({ message: "Contest not found" });
+    }
+
+    // 2. Security Check: Has the contest started?
+    const now = new Date();
+    const hasStarted = now >= new Date(contest.startTime);
+
+    // 3. If started, fetch problems securely (excluding answers)
+    if (hasStarted) {
+      const problems = await ContestProblem.find({ contestId: contest._id })
+        .select("-correctAnswer -solution"); // CRITICAL: Exclude answers
+      
+      contest.problems = problems;
+    } else {
+      // If not started, hide problems entirely
+      contest.problems = [];
     }
 
     return res.json({ success: true, contest });

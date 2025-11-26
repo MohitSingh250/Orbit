@@ -38,7 +38,8 @@ const contestSchema = new mongoose.Schema({
       },
       score: { type: Number, default: 0 },
       solved: { type: Number, default: 0 },
-      lastSubmissionAt: { type: Date, default: null }
+      lastSubmissionAt: { type: Date, default: null },
+      isSubmitted: { type: Boolean, default: false }
     }
   ],
 

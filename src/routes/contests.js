@@ -12,13 +12,13 @@ const {
 
 const {auth, requireRole} = require("../middlewares/auth");
 
-router.post("/", auth,requireRole('admin'), createContest);
-router.post("/:contestId/problems", auth,requireRole('admin'), addContestProblem);
+router.post("/", auth, createContest);
+router.post("/:contestId/problems", addContestProblem);
 router.post("/:contestId/register", auth, registerForContest);
 
 router.get("/", getContests);
 router.get("/:contestId", getContestById);
 
-router.delete("/:contestId", auth,requireRole('admin'), deleteContest);
+router.delete("/:contestId", auth, deleteContest);
 
 module.exports = router;

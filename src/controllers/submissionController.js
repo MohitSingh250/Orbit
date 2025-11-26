@@ -146,4 +146,104 @@ const getSubmissionsForUser = async (req, res, next) => {
   }
 };
 
-module.exports = { submitAnswer, getSubmissionsForUser };
+const submitBulkAnswers = async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { contestId, submissions } = req.body;
+    const userId = req.user._id;
+
+    if (!contestId || !Array.isArray(submissions)) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: "Invalid payload" });
+    }
+
+    const contest = await Contest.findById(contestId).session(session);
+    if (!contest) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ message: "Contest not found" });
+    }
+
+    const now = new Date();
+    if (now < contest.startTime) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: "Contest has not started yet" });
+    }
+    if (now > contest.endTime) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: "Contest has ended" });
+    }
+
+    const participant = contest.participants.find(
+      (p) => String(p.userId) === String(userId)
+    );
+    if (!participant) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(403).json({ message: "Join contest before submitting" });
+    }
+
+    let totalScoreToAdd = 0;
+    let totalSolvedToAdd = 0;
+
+    for (const sub of submissions) {
+      const { problemId, answer } = sub;
+      if (!problemId) continue;
+
+      const problem = await ContestProblem.findById(problemId).session(session);
+      if (!problem) continue;
+
+      // Check if already solved correctly
+      const existing = await Submission.findOne({
+        userId,
+        contestId,
+        contestProblemId: problemId,
+        isCorrect: true,
+      }).session(session);
+
+      if (existing) continue;
+
+      const { correct, score } = compareAnswers(problem, answer);
+
+      await Submission.create(
+        [
+          {
+            userId,
+            contestId,
+            contestProblemId: problemId,
+            answer,
+            isCorrect: correct,
+            score: score || 0,
+          },
+        ],
+        { session }
+      );
+
+      if (correct) {
+        totalScoreToAdd += score || 0;
+        totalSolvedToAdd += 1;
+      }
+    }
+
+    participant.score += totalScoreToAdd;
+    participant.solved += totalSolvedToAdd;
+    participant.lastSubmissionAt = new Date();
+    participant.isSubmitted = true;
+
+    await contest.save({ session });
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(201).json({ message: "Bulk submission successful" });
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    next(err);
+  }
+};
+
+module.exports = { submitAnswer, getSubmissionsForUser, submitBulkAnswers };
