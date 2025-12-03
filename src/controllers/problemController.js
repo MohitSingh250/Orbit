@@ -13,8 +13,9 @@ const createProblem = async (req, res, next) => {
 
 const listProblems = async (req, res, next) => {
   try {
-    const { topic, difficulty, tags, q, page = 1, limit = 20 } = req.query;
-
+    const { topic, subject, difficulty, tags, q, page = 1, limit = 20 } = req.query;
+    console.log("!!! DEBUGGING SUBJECT FILTER !!! Query:", req.query);
+    console.log("Subject param:", subject);
     const filters = {};
     if (q) {
       filters.$or = [
@@ -25,6 +26,10 @@ const listProblems = async (req, res, next) => {
 
     if (topic) {
       filters.topics = { $in: [new RegExp(topic.trim(), "i")] };
+    }
+
+    if (subject) {
+      filters.subject = { $regex: `^${subject.trim()}$`, $options: "i" };
     }
 
     if (difficulty) {

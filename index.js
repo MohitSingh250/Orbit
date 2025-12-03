@@ -1,4 +1,5 @@
 require('dotenv').config();
+console.log("!!! SERVER STARTING - VERIFY ME !!!");
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./src/config/db');

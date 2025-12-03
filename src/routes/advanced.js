@@ -6,7 +6,7 @@ const ctrl = require('../controllers/advancedController');
 
 
 router.get('/problems/daily-problem', ctrl.getDailyProblem); // specific first
-router.get('/problems', ctrl.listProblems);                 // then list
+// router.get('/problems', ctrl.listProblems);                 // REMOVED: Conflicting with problemRoutes
 router.get('/problems/:id/stats', async (req, res) => {
   const stats = await ctrl.getProblemStats(req.params.id);
   res.json(stats);

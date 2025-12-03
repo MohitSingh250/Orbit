@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const ProblemSchema = new mongoose.Schema({
 title: { type: String, required: true, index: 'text' },
 statement: { type: String, required: true },
+subject: { type: String, enum: ['Physics', 'Chemistry', 'Maths'], index: true },
 topics: [{ type: String, index: true }], 
 tags: [{ type: String, index: true }],
 difficulty: { type: String, enum: ['easy','medium','hard'], default: 'medium', index: true },
