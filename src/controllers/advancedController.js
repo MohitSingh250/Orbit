@@ -7,13 +7,41 @@ const User = require('../models/User');
 
 const getUserStreak = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id).lean();
+    const userId = req.user._id;
+    const user = await User.findById(userId).lean();
     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Fetch all correct submissions to build history
+    const submissions = await Submission.find({ 
+      userId: userId, 
+      isCorrect: true 
+    }).select('createdAt').lean();
+
+    // Extract unique dates (ISO strings)
+    const historySet = new Set();
+    submissions.forEach(sub => {
+      if (sub.createdAt) {
+        historySet.add(new Date(sub.createdAt).toISOString());
+      }
+    });
+    
+    // Also check user.solvedProblems for legacy data or direct updates
+    if (user.solvedProblems) {
+      user.solvedProblems.forEach(p => {
+        const date = p.solvedAt || p.createdAt; // Handle different schemas
+        if (date) {
+          historySet.add(new Date(date).toISOString());
+        }
+      });
+    }
+
+    const history = Array.from(historySet).sort();
 
     res.json({
       currentStreak: user.currentStreak || 0,
       longestStreak: user.longestStreak || 0,
-      lastSolvedAt: user.lastSolvedAt || null
+      lastSolvedAt: user.lastSolvedAt || null,
+      history // Array of "YYYY-MM-DD" strings
     });
   } catch (err) {
     next(err);
@@ -65,6 +93,34 @@ const getUserDashboard = async (req, res, next) => {
         Number(((topicStats[t].correct / topicStats[t].attempts) * 100).toFixed(2));
     });
 
+    // 📊 Aggregation for Subjects (Physics, Chemistry, Maths)
+    const subjectAgg = await Submission.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+      {
+        $lookup: {
+          from: 'problems',
+          localField: 'problemId',
+          foreignField: '_id',
+          as: 'problem'
+        }
+      },
+      { $unwind: '$problem' },
+      { $group: { _id: { subject: '$problem.subject', isCorrect: '$isCorrect' }, count: { $sum: 1 } } }
+    ]);
+
+    const subjectStats = {};
+    subjectAgg.forEach(r => {
+      const s = r._id.subject || 'Unknown';
+      subjectStats[s] = subjectStats[s] || { attempts: 0, correct: 0 };
+      subjectStats[s].attempts += r.count;
+      if (r._id.isCorrect === true) subjectStats[s].correct += r.count;
+    });
+
+    Object.keys(subjectStats).forEach(s => {
+      subjectStats[s].accuracy = subjectStats[s].attempts === 0 ? 0 :
+        Number(((subjectStats[s].correct / subjectStats[s].attempts) * 100).toFixed(2));
+    });
+
     // 🔥 FIX: Handle both old and new solvedProblems structure
     let solvedProblemsArray = [];
     
@@ -107,30 +163,76 @@ const getUserDashboard = async (req, res, next) => {
     // Filter out null values (deleted problems)
     const validSolvedProblems = solvedProblemsWithDates.filter(Boolean);
 
+    // Sort by solvedAt descending (most recent first)
+    validSolvedProblems.sort((a, b) => new Date(b.solvedAt) - new Date(a.solvedAt));
+
     const easySolved = validSolvedProblems.filter(p => p.difficulty === 'easy').length;
     const mediumSolved = validSolvedProblems.filter(p => p.difficulty === 'medium').length;
     const hardSolved = validSolvedProblems.filter(p => p.difficulty === 'hard').length;
 
-    const notes = (user.notes || []).map(n => ({
-      problemId: n.problemId,
-      note: n.note,
-      createdAt: n.createdAt
+    // 🔢 Get Total Problem Counts from DB
+    const [totalEasy, totalMedium, totalHard] = await Promise.all([
+      Problem.countDocuments({ difficulty: 'easy' }),
+      Problem.countDocuments({ difficulty: 'medium' }),
+      Problem.countDocuments({ difficulty: 'hard' })
+    ]);
+
+    const notes = await Promise.all((user.notes || []).map(async n => {
+      const problem = await Problem.findById(n.problemId).select('title difficulty').lean();
+      return {
+        problemId: n.problemId,
+        problemTitle: problem ? problem.title : 'Unknown Problem',
+        problemDifficulty: problem ? problem.difficulty : 'medium',
+        note: n.note,
+        createdAt: n.createdAt
+      };
     }));
 
     const bookmarks = user.bookmarks || [];
 
+    // --- NEW: Calculate Global Rank & Percentile ---
+    const totalUsers = await User.countDocuments();
+    const betterUsers = await User.countDocuments({ rating: { $gt: user.rating || 1500 } });
+    const globalRank = betterUsers + 1;
+    const percentile = totalUsers > 1 
+      ? ((totalUsers - globalRank) / totalUsers) * 100 
+      : 100;
+
     res.json({
       username: user.username,
       rating: user.rating,
+      globalRank,
+      percentile: Number(percentile.toFixed(2)),
+      attended: user.contestHistory ? user.contestHistory.length : 0,
+      contestHistory: user.contestHistory || [],
       totalSolved: validSolvedProblems.length,
       easySolved,
       mediumSolved,
       hardSolved,
+      totalEasy,
+      totalMedium,
+      totalHard,
+      accuracy: Number(accuracy.toFixed(2)),
       accuracy: Number(accuracy.toFixed(2)),
       topicStats,
+      subjectStats,
       solvedProblems: validSolvedProblems, 
       notes,
-      bookmarks
+      bookmarks,
+      about: user.about,
+      location: user.location,
+      website: user.website,
+      github: user.github,
+      linkedin: user.linkedin,
+      avatar: user.avatar,
+      skills: user.skills,
+      // Community Stats
+      views: user.views || 0,
+      solutions: user.solutions || 0,
+      discuss: user.discuss || 0,
+      reputation: user.reputation || 0,
+      // Badges
+      badges: user.badges || []
     });
   } catch (err) {
     console.error("❌ Dashboard error:", err);
