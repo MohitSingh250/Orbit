@@ -18,5 +18,6 @@ router.post('/users/me/bookmarks', auth, ctrl.toggleBookmark);
 router.get('/users/me/bookmarks', auth, ctrl.getBookmarks);
 router.get('/users/me/dashboard', auth, ctrl.getUserDashboard);
 router.get('/users/me/streak', auth, ctrl.getUserStreak);
+router.get('/stats', ctrl.getGlobalStats);
 
 module.exports = router;

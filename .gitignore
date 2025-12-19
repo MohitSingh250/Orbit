@@ -1,2 +1,13 @@
 node_modules
 .env
+.DS_Store
+*.log
+dist
+build
+
+# Contest Generator
+contest-generator/.env
+contest-generator/chroma_db/
+contest-generator/__pycache__/
+contest-generator/venv/
+contest-generator/.pytest_cache/

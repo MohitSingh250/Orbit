@@ -7,6 +7,7 @@ const router = express.Router();
 router.post('/create-problem', createProblem);
 // Public endpoints
 router.get('/', listProblems);
+router.get('/daily-problem', require('../controllers/problemController').getDailyProblem);
 router.get('/random/problem', randomProblem);
 router.get('/:id', getProblem);
 

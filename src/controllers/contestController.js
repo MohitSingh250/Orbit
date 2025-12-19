@@ -5,6 +5,11 @@ const User = require("../models/User");
 
 const createContest = async (req, res) => {
   try {
+    const { startTime, endTime } = req.body;
+    if (new Date(startTime) >= new Date(endTime)) {
+      return res.status(400).json({ message: "Start time must be before end time" });
+    }
+
     const contest = new Contest(req.body);
     await contest.save();
 

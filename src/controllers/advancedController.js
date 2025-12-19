@@ -435,6 +435,34 @@ const getDailyProblem = async (req, res, next) => {
   }
 };
 
+const getGlobalStats = async (req, res, next) => {
+  try {
+    const [totalProblems, totalUsers, totalSubmissions, activeContests, physicsCount, chemistryCount, mathsCount] = await Promise.all([
+      Problem.countDocuments(),
+      User.countDocuments(),
+      Submission.countDocuments(),
+      require('../models/Contest').countDocuments({ endTime: { $gt: new Date() } }),
+      Problem.countDocuments({ subject: 'Physics' }),
+      Problem.countDocuments({ subject: 'Chemistry' }),
+      Problem.countDocuments({ subject: 'Maths' })
+    ]);
+
+    res.json({
+      totalProblems,
+      totalUsers,
+      totalSubmissions,
+      activeContests,
+      subjectCounts: {
+        Physics: physicsCount,
+        Chemistry: chemistryCount,
+        Maths: mathsCount
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   listProblems,
   getProblemDetail,
@@ -444,5 +472,6 @@ module.exports = {
   getBookmarks,
   getDailyProblem,
   getUserDashboard,
-  getUserStreak
+  getUserStreak,
+  getGlobalStats
 };

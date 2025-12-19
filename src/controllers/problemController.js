@@ -92,4 +92,24 @@ const getProblem = async (req, res, next) => {
 
 
 
-module.exports = { createProblem, listProblems, getProblem ,randomProblem};
+const getDailyProblem = async (req, res, next) => {
+  try {
+    const count = await Problem.countDocuments();
+    if (count === 0) return res.status(404).json({ message: "No problems found" });
+
+    // Use date string to seed the random selection
+    const today = new Date().toDateString();
+    let hash = 0;
+    for (let i = 0; i < today.length; i++) {
+      hash = today.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % count;
+
+    const problem = await Problem.findOne().skip(index).lean();
+    res.json(problem);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { createProblem, listProblems, getProblem, randomProblem, getDailyProblem };

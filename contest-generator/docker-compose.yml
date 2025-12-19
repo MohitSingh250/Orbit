@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  contest-generator:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./chroma_db:/app/chroma_db
+    env_file:
+      - .env
+    restart: always

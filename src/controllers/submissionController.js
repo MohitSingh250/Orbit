@@ -146,6 +146,27 @@ const getSubmissionsForUser = async (req, res, next) => {
   }
 };
 
+const getSubmissionsForProblem = async (req, res, next) => {
+  try {
+    const { problemId } = req.params;
+    const userId = req.user._id;
+
+    const submissions = await Submission.find({ 
+      userId, 
+      $or: [
+        { problemId },
+        { contestProblemId: problemId }
+      ]
+    })
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    res.json(submissions);
+  } catch (err) {
+    next(err);
+  }
+};
+
 const submitBulkAnswers = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -246,4 +267,4 @@ const submitBulkAnswers = async (req, res, next) => {
   }
 };
 
-module.exports = { submitAnswer, getSubmissionsForUser, submitBulkAnswers };
+module.exports = { submitAnswer, getSubmissionsForUser, getSubmissionsForProblem, submitBulkAnswers };
