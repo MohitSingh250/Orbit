@@ -62,7 +62,7 @@ const login = async (req, res, next) => {
   }
 };
 
-const refresh = ()=>{
+const refresh = async (req, res, next) => {
   try{
     const {refreshToken}=req.body;
     if(!refreshToken){
