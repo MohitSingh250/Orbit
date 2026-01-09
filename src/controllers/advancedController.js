@@ -170,6 +170,10 @@ const getUserDashboard = async (req, res, next) => {
     const mediumSolved = validSolvedProblems.filter(p => p.difficulty === 'medium').length;
     const hardSolved = validSolvedProblems.filter(p => p.difficulty === 'hard').length;
 
+    // 🏆 Dynamic Reputation Calculation
+    // Easy: 5pts, Medium: 10pts, Hard: 20pts
+    const reputation = (easySolved * 5) + (mediumSolved * 10) + (hardSolved * 20);
+
     // 🔢 Get Total Problem Counts from DB
     const [totalEasy, totalMedium, totalHard] = await Promise.all([
       Problem.countDocuments({ difficulty: 'easy' }),
@@ -212,7 +216,7 @@ const getUserDashboard = async (req, res, next) => {
       totalEasy,
       totalMedium,
       totalHard,
-      accuracy: Number(accuracy.toFixed(2)),
+      reputation, // ✅ Dynamic Reputation
       accuracy: Number(accuracy.toFixed(2)),
       topicStats,
       subjectStats,
@@ -288,6 +292,30 @@ const getProblemDetail = async (req, res, next) => {
     const problem = await Problem.findById(id).populate('similarProblems', 'title difficulty topics').lean();
     if (!problem) return res.status(404).json({ message: 'Problem not found' });
 
+    // Fallback: If no similar problems linked, find some automatically
+    if (!problem.similarProblems || problem.similarProblems.length === 0) {
+      let fallbackSimilar = await Problem.find({
+        _id: { $ne: id },
+        $or: [
+          { topics: { $in: problem.topics || [] } },
+          { subject: problem.subject }
+        ]
+      })
+      .select('title difficulty topics')
+      .limit(5)
+      .lean();
+      
+      // Final fallback: If still empty, just get any 5 problems
+      if (fallbackSimilar.length === 0) {
+        fallbackSimilar = await Problem.find({ _id: { $ne: id } })
+          .select('title difficulty topics')
+          .limit(5)
+          .lean();
+      }
+      
+      problem.similarProblems = fallbackSimilar;
+    }
+
     const stats = await getProblemStats(id);
     res.json({ ...problem, stats });
   } catch (err) {
@@ -302,6 +330,30 @@ const getProblemDetailForUser = async (req, res, next) => {
 
     const problem = await Problem.findById(id).populate('similarProblems', 'title difficulty topics').lean();
     if (!problem) return res.status(404).json({ message: 'Problem not found' });
+
+    // Fallback: If no similar problems linked, find some automatically
+    if (!problem.similarProblems || problem.similarProblems.length === 0) {
+      let fallbackSimilar = await Problem.find({
+        _id: { $ne: id },
+        $or: [
+          { topics: { $in: problem.topics || [] } },
+          { subject: problem.subject }
+        ]
+      })
+      .select('title difficulty topics')
+      .limit(5)
+      .lean();
+      
+      // Final fallback: If still empty, just get any 5 problems
+      if (fallbackSimilar.length === 0) {
+        fallbackSimilar = await Problem.find({ _id: { $ne: id } })
+          .select('title difficulty topics')
+          .limit(5)
+          .lean();
+      }
+      
+      problem.similarProblems = fallbackSimilar;
+    }
 
     const stats = await getProblemStats(id);
 
