@@ -11,6 +11,7 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, index: true },
   passwordHash: { type: String, required: true },
   roles: { type: [String], default: ['user'], index: true },
+  isBanned: { type: Boolean, default: false },
   rating: { type: Number, default: 1500 },
   solvedProblems: [{
     problemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Problem' },
