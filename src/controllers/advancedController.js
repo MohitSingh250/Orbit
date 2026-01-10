@@ -48,198 +48,175 @@ const getUserStreak = async (req, res, next) => {
   }
 };
 
+const getDashboardData = async (userId) => {
+  const user = await User.findById(userId).lean();
+  if (!user) return null;
+
+  const agg = await Submission.aggregate([
+    { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+    { $group: { _id: '$isCorrect', count: { $sum: 1 } } }
+  ]);
+
+  let correct = 0, total = 0;
+  agg.forEach(a => {
+    total += a.count;
+    if (a._id === true) correct = a.count;
+  });
+  const accuracy = total === 0 ? 0 : (correct / total) * 100;
+  const topicAgg = await Submission.aggregate([
+    { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+    {
+      $lookup: {
+        from: 'problems',
+        localField: 'problemId',
+        foreignField: '_id',
+        as: 'problem'
+      }
+    },
+    { $unwind: '$problem' },
+    { $unwind: { path: '$problem.topics', preserveNullAndEmptyArrays: true } },
+    { $group: { _id: { topic: '$problem.topics', isCorrect: '$isCorrect' }, count: { $sum: 1 } } }
+  ]);
+
+  const topicStats = {};
+  topicAgg.forEach(r => {
+    const t = r._id.topic || 'Unknown';
+    topicStats[t] = topicStats[t] || { attempts: 0, correct: 0 };
+    topicStats[t].attempts += r.count;
+    if (r._id.isCorrect === true) topicStats[t].correct += r.count;
+  });
+
+  Object.keys(topicStats).forEach(t => {
+    topicStats[t].accuracy = topicStats[t].attempts === 0 ? 0 :
+      Number(((topicStats[t].correct / topicStats[t].attempts) * 100).toFixed(2));
+  });
+
+  const subjectAgg = await Submission.aggregate([
+    { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+    {
+      $lookup: {
+        from: 'problems',
+        localField: 'problemId',
+        foreignField: '_id',
+        as: 'problem'
+      }
+    },
+    { $unwind: '$problem' },
+    { $group: { _id: { subject: '$problem.subject', isCorrect: '$isCorrect' }, count: { $sum: 1 } } }
+  ]);
+
+  const subjectStats = {};
+  subjectAgg.forEach(r => {
+    const s = r._id.subject || 'Unknown';
+    subjectStats[s] = subjectStats[s] || { attempts: 0, correct: 0 };
+    subjectStats[s].attempts += r.count;
+    if (r._id.isCorrect === true) subjectStats[s].correct += r.count;
+  });
+
+  Object.keys(subjectStats).forEach(s => {
+    subjectStats[s].accuracy = subjectStats[s].attempts === 0 ? 0 :
+      Number(((subjectStats[s].correct / subjectStats[s].attempts) * 100).toFixed(2));
+  });
+
+  let solvedProblemsArray = [];
+  if (user.solvedProblems && user.solvedProblems.length > 0) {
+    const firstItem = user.solvedProblems[0];
+    if (firstItem.problemId) {
+      solvedProblemsArray = user.solvedProblems;
+    } else if (mongoose.Types.ObjectId.isValid(firstItem)) {
+      solvedProblemsArray = user.solvedProblems.map(id => ({
+        problemId: id,
+        solvedAt: new Date()
+      }));
+    }
+  }
+
+  const solvedProblemsWithDates = await Promise.all(
+    solvedProblemsArray.map(async (entry) => {
+      const problemId = entry.problemId || entry;
+      const problem = await Problem.findById(problemId)
+        .select('title difficulty topics')
+        .lean();
+      if (!problem) return null;
+      return {
+        ...problem,
+        solvedAt: entry.solvedAt || new Date()
+      };
+    })
+  );
+
+  const validSolvedProblems = solvedProblemsWithDates.filter(Boolean);
+  validSolvedProblems.sort((a, b) => new Date(b.solvedAt) - new Date(a.solvedAt));
+
+  const easySolved = validSolvedProblems.filter(p => p.difficulty === 'easy').length;
+  const mediumSolved = validSolvedProblems.filter(p => p.difficulty === 'medium').length;
+  const hardSolved = validSolvedProblems.filter(p => p.difficulty === 'hard').length;
+
+  const reputation = (easySolved * 5) + (mediumSolved * 10) + (hardSolved * 20);
+
+  const [totalEasy, totalMedium, totalHard] = await Promise.all([
+    Problem.countDocuments({ difficulty: 'easy' }),
+    Problem.countDocuments({ difficulty: 'medium' }),
+    Problem.countDocuments({ difficulty: 'hard' })
+  ]);
+
+  const totalUsers = await User.countDocuments();
+  const betterUsers = await User.countDocuments({ rating: { $gt: user.rating || 1500 } });
+  const globalRank = betterUsers + 1;
+  const percentile = totalUsers > 1 ? ((totalUsers - globalRank) / totalUsers) * 100 : 100;
+
+  return {
+    _id: user._id,
+    username: user.username,
+    rating: user.rating,
+    globalRank,
+    percentile: Number(percentile.toFixed(2)),
+    attended: user.contestHistory ? user.contestHistory.length : 0,
+    contestHistory: user.contestHistory || [],
+    totalSolved: validSolvedProblems.length,
+    easySolved,
+    mediumSolved,
+    hardSolved,
+    totalEasy,
+    totalMedium,
+    totalHard,
+    reputation,
+    accuracy: Number(accuracy.toFixed(2)),
+    topicStats,
+    subjectStats,
+    solvedProblems: validSolvedProblems,
+    about: user.about,
+    location: user.location,
+    website: user.website,
+    github: user.github,
+    linkedin: user.linkedin,
+    avatar: user.avatar,
+    skills: user.skills,
+    views: user.views || 0,
+    solutions: user.solutions || 0,
+    discuss: user.discuss || 0,
+    badges: user.badges || []
+  };
+};
+
 const getUserDashboard = async (req, res, next) => {
   try {
-    const userId = req.user._id;
-    const user = await User.findById(userId).lean();
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    const agg = await Submission.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
-      { $group: { _id: '$isCorrect', count: { $sum: 1 } } }
-    ]);
-
-    let correct = 0, total = 0;
-    agg.forEach(a => {
-      total += a.count;
-      if (a._id === true) correct = a.count;
-    });
-    const accuracy = total === 0 ? 0 : (correct / total) * 100;
-    const topicAgg = await Submission.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
-      {
-        $lookup: {
-          from: 'problems',
-          localField: 'problemId',
-          foreignField: '_id',
-          as: 'problem'
-        }
-      },
-      { $unwind: '$problem' },
-      { $unwind: { path: '$problem.topics', preserveNullAndEmptyArrays: true } },
-      { $group: { _id: { topic: '$problem.topics', isCorrect: '$isCorrect' }, count: { $sum: 1 } } }
-    ]);
-
-    const topicStats = {};
-    topicAgg.forEach(r => {
-      const t = r._id.topic || 'Unknown';
-      topicStats[t] = topicStats[t] || { attempts: 0, correct: 0 };
-      topicStats[t].attempts += r.count;
-      if (r._id.isCorrect === true) topicStats[t].correct += r.count;
-    });
-
-    Object.keys(topicStats).forEach(t => {
-      topicStats[t].accuracy = topicStats[t].attempts === 0 ? 0 :
-        Number(((topicStats[t].correct / topicStats[t].attempts) * 100).toFixed(2));
-    });
-
-    // 📊 Aggregation for Subjects (Physics, Chemistry, Maths)
-    const subjectAgg = await Submission.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
-      {
-        $lookup: {
-          from: 'problems',
-          localField: 'problemId',
-          foreignField: '_id',
-          as: 'problem'
-        }
-      },
-      { $unwind: '$problem' },
-      { $group: { _id: { subject: '$problem.subject', isCorrect: '$isCorrect' }, count: { $sum: 1 } } }
-    ]);
-
-    const subjectStats = {};
-    subjectAgg.forEach(r => {
-      const s = r._id.subject || 'Unknown';
-      subjectStats[s] = subjectStats[s] || { attempts: 0, correct: 0 };
-      subjectStats[s].attempts += r.count;
-      if (r._id.isCorrect === true) subjectStats[s].correct += r.count;
-    });
-
-    Object.keys(subjectStats).forEach(s => {
-      subjectStats[s].accuracy = subjectStats[s].attempts === 0 ? 0 :
-        Number(((subjectStats[s].correct / subjectStats[s].attempts) * 100).toFixed(2));
-    });
-
-    // 🔥 FIX: Handle both old and new solvedProblems structure
-    let solvedProblemsArray = [];
-    
-    if (user.solvedProblems && user.solvedProblems.length > 0) {
-      // Check if first item has problemId property (new structure)
-      const firstItem = user.solvedProblems[0];
-      
-      if (firstItem.problemId) {
-        // New structure: {problemId, solvedAt}
-        solvedProblemsArray = user.solvedProblems;
-      } else if (mongoose.Types.ObjectId.isValid(firstItem)) {
-        // Old structure: just ObjectIds
-        // Convert to new structure
-        solvedProblemsArray = user.solvedProblems.map(id => ({
-          problemId: id,
-          solvedAt: new Date() // Use current date as fallback
-        }));
-      }
-    }
-
-    // Populate problem details with solvedAt dates
-    const solvedProblemsWithDates = await Promise.all(
-      solvedProblemsArray.map(async (entry) => {
-        const problemId = entry.problemId || entry;
-        const problem = await Problem.findById(problemId)
-          .select('title difficulty topics')
-          .lean();
-        
-        if (!problem) {
-          return null;
-        }
-        
-        return {
-          ...problem,
-          solvedAt: entry.solvedAt || new Date() // ✅ Include the solvedAt timestamp
-        };
-      })
-    );
-
-    // Filter out null values (deleted problems)
-    const validSolvedProblems = solvedProblemsWithDates.filter(Boolean);
-
-    // Sort by solvedAt descending (most recent first)
-    validSolvedProblems.sort((a, b) => new Date(b.solvedAt) - new Date(a.solvedAt));
-
-    const easySolved = validSolvedProblems.filter(p => p.difficulty === 'easy').length;
-    const mediumSolved = validSolvedProblems.filter(p => p.difficulty === 'medium').length;
-    const hardSolved = validSolvedProblems.filter(p => p.difficulty === 'hard').length;
-
-    // 🏆 Dynamic Reputation Calculation
-    // Easy: 5pts, Medium: 10pts, Hard: 20pts
-    const reputation = (easySolved * 5) + (mediumSolved * 10) + (hardSolved * 20);
-
-    // 🔢 Get Total Problem Counts from DB
-    const [totalEasy, totalMedium, totalHard] = await Promise.all([
-      Problem.countDocuments({ difficulty: 'easy' }),
-      Problem.countDocuments({ difficulty: 'medium' }),
-      Problem.countDocuments({ difficulty: 'hard' })
-    ]);
-
-    const notes = await Promise.all((user.notes || []).map(async n => {
-      const problem = await Problem.findById(n.problemId).select('title difficulty').lean();
-      return {
-        problemId: n.problemId,
-        problemTitle: problem ? problem.title : 'Unknown Problem',
-        problemDifficulty: problem ? problem.difficulty : 'medium',
-        note: n.note,
-        createdAt: n.createdAt
-      };
-    }));
-
-    const bookmarks = user.bookmarks || [];
-
-    // --- NEW: Calculate Global Rank & Percentile ---
-    const totalUsers = await User.countDocuments();
-    const betterUsers = await User.countDocuments({ rating: { $gt: user.rating || 1500 } });
-    const globalRank = betterUsers + 1;
-    const percentile = totalUsers > 1 
-      ? ((totalUsers - globalRank) / totalUsers) * 100 
-      : 100;
-
-    res.json({
-      username: user.username,
-      rating: user.rating,
-      globalRank,
-      percentile: Number(percentile.toFixed(2)),
-      attended: user.contestHistory ? user.contestHistory.length : 0,
-      contestHistory: user.contestHistory || [],
-      totalSolved: validSolvedProblems.length,
-      easySolved,
-      mediumSolved,
-      hardSolved,
-      totalEasy,
-      totalMedium,
-      totalHard,
-      reputation, // ✅ Dynamic Reputation
-      accuracy: Number(accuracy.toFixed(2)),
-      topicStats,
-      subjectStats,
-      solvedProblems: validSolvedProblems, 
-      notes,
-      bookmarks,
-      about: user.about,
-      location: user.location,
-      website: user.website,
-      github: user.github,
-      linkedin: user.linkedin,
-      avatar: user.avatar,
-      skills: user.skills,
-      // Community Stats
-      views: user.views || 0,
-      solutions: user.solutions || 0,
-      discuss: user.discuss || 0,
-      reputation: user.reputation || 0,
-      // Badges
-      badges: user.badges || []
-    });
+    const data = await getDashboardData(req.user._id);
+    if (!data) return res.status(404).json({ message: 'User not found' });
+    res.json(data);
   } catch (err) {
     console.error("❌ Dashboard error:", err);
+    next(err);
+  }
+};
+
+const getUserProfile = async (req, res, next) => {
+  try {
+    const data = await getDashboardData(req.params.id);
+    if (!data) return res.status(404).json({ message: 'User not found' });
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Profile error:", err);
     next(err);
   }
 };
@@ -525,5 +502,6 @@ module.exports = {
   getDailyProblem,
   getUserDashboard,
   getUserStreak,
+  getUserProfile,
   getGlobalStats
 };

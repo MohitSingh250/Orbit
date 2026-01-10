@@ -11,6 +11,7 @@ const submissionRoutes = require('./src/routes/submissions');
 const advancedRoutes = require('./src/routes/advanced');
 const contestRoutes = require('./src/routes/contests');
 const leaderboardRoutes = require('./src/routes/leaderboard');
+const discussionRoutes = require('./src/routes/discussions');
 
 const app = express();
 app.use(cors());
@@ -21,6 +22,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/leaderboards', leaderboardRoutes);
 app.use('/api/contests', contestRoutes);
+app.use('/api/discussions', discussionRoutes);
 
 app.use(errorHandler);
 const PORT = process.env.PORT || 4000;

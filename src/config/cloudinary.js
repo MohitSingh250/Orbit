@@ -2,6 +2,11 @@ const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const multer = require("multer");
 
+console.log("Cloudinary Config Check:");
+console.log("Cloud Name:", process.env.CLOUDINARY_CLOUD_NAME ? "Set" : "Missing");
+console.log("API Key:", process.env.CLOUDINARY_API_KEY ? "Set" : "Missing");
+console.log("API Secret:", process.env.CLOUDINARY_API_SECRET ? "Set" : "Missing");
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -17,6 +22,15 @@ const storage = new CloudinaryStorage({
   },
 });
 
-const upload = multer({ storage });
+const discussionStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "discussions",
+    resource_type: "auto",
+  },
+});
 
-module.exports = { cloudinary, upload };
+const upload = multer({ storage });
+const discussionUpload = multer({ storage: discussionStorage });
+
+module.exports = { cloudinary, upload, discussionUpload };
