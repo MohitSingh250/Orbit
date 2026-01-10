@@ -5,7 +5,12 @@ const { OAuth2Client } = require('google-auth-library');
 
 const signup = async (req, res, next) => {
   try {
-    const { username, email, password } = req.body;
+    const { 
+      username, email, password, location, 
+      class: userClass, interests, learningGoals, 
+      skillLevel, referral, coupon 
+    } = req.body;
+
     if (!username || !email || !password) {
       return res.status(400).json({ message: 'Missing fields' });
     }
@@ -18,7 +23,18 @@ const signup = async (req, res, next) => {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
 
-    const user = await User.create({ username, email, passwordHash: hash });
+    const user = await User.create({ 
+      username, 
+      email, 
+      passwordHash: hash,
+      location: location || '',
+      class: userClass || '',
+      interests: interests || [],
+      learningGoals: learningGoals || [],
+      skillLevel: skillLevel || '',
+      referral: referral || '',
+      coupon: coupon || ''
+    });
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET,

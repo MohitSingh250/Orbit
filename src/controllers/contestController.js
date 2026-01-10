@@ -125,12 +125,15 @@ const getContestById = async (req, res) => {
 
     // 2. Security Check: Has the contest started?
     const now = new Date();
-    const hasStarted = now >= new Date(contest.startTime);
+    const isVirtual = req.query.virtual === "true";
+    const hasStarted = now >= new Date(contest.startTime) || isVirtual;
 
-    // 3. If started, fetch problems securely (excluding answers)
+    // 3. If started or virtual, fetch problems securely (excluding answers)
     if (hasStarted) {
-      const problems = await ContestProblem.find({ contestId: contest._id })
-        .select("-correctAnswer -solution"); // CRITICAL: Exclude answers
+      const mongoose = require('mongoose');
+      const problems = await ContestProblem.find({ contestId: new mongoose.Types.ObjectId(contestId) })
+        .select("-correctAnswer -solution")
+        .lean();
       
       contest.problems = problems;
     } else {

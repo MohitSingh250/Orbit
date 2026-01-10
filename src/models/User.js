@@ -46,7 +46,14 @@ const UserSchema = new mongoose.Schema({
     name: { type: String },
     icon: { type: String },
     earnedAt: { type: Date, default: Date.now }
-  }]
+  }],
+  // Onboarding Data
+  class: { type: String, default: '' },
+  interests: { type: [String], default: [] },
+  learningGoals: { type: [String], default: [] },
+  skillLevel: { type: String, enum: ['beginner', 'intermediate', 'advanced', ''], default: '' },
+  referral: { type: String, default: '' },
+  coupon: { type: String, default: '' }
 });
 
 module.exports = mongoose.model('User', UserSchema);
