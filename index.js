@@ -13,6 +13,7 @@ const contestRoutes = require('./src/routes/contests');
 const leaderboardRoutes = require('./src/routes/leaderboard');
 const discussionRoutes = require('./src/routes/discussions');
 const adminRoutes = require('./src/routes/admin');
+const questRoutes = require('./src/routes/quests');
 
 const app = express();
 app.use(cors());
@@ -25,6 +26,7 @@ app.use('/api/leaderboards', leaderboardRoutes);
 app.use('/api/contests', contestRoutes);
 app.use('/api/discussions', discussionRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/quests', questRoutes);
 
 app.use(errorHandler);
 const PORT = process.env.PORT || 4000;
