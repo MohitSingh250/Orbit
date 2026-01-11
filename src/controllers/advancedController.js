@@ -15,33 +15,61 @@ const getUserStreak = async (req, res, next) => {
     const submissions = await Submission.find({ 
       userId: userId, 
       isCorrect: true 
-    }).select('createdAt').lean();
+    }).select('createdAt problemId').lean();
 
     // Extract unique dates (ISO strings)
     const historySet = new Set();
+    const dailyHistorySet = new Set();
+    
+    // Group submissions by date for daily check
+    const submissionsByDate = {};
     submissions.forEach(sub => {
       if (sub.createdAt) {
+        const dateKey = new Date(sub.createdAt).toISOString().slice(0, 10);
         historySet.add(new Date(sub.createdAt).toISOString());
+        if (!submissionsByDate[dateKey]) submissionsByDate[dateKey] = [];
+        submissionsByDate[dateKey].push(String(sub.problemId));
       }
     });
     
-    // Also check user.solvedProblems for legacy data or direct updates
+    // Also check user.solvedProblems for legacy data
     if (user.solvedProblems) {
       user.solvedProblems.forEach(p => {
-        const date = p.solvedAt || p.createdAt; // Handle different schemas
+        const date = p.solvedAt || p.createdAt;
         if (date) {
+          const dateKey = new Date(date).toISOString().slice(0, 10);
           historySet.add(new Date(date).toISOString());
+          if (!submissionsByDate[dateKey]) submissionsByDate[dateKey] = [];
+          submissionsByDate[dateKey].push(String(p.problemId));
+        }
+      });
+    }
+
+    // Calculate daily problem for each date in history and check if it was solved
+    const allProblems = await Problem.find().select('_id').sort({ _id: 1 }).lean();
+    const count = allProblems.length;
+
+    if (count > 0) {
+      Object.keys(submissionsByDate).forEach(dateKey => {
+        const seed = Array.from(dateKey).reduce((s, c) => s + c.charCodeAt(0), 0);
+        const idx = seed % count;
+        const dailyProblemId = String(allProblems[idx]._id);
+        
+        if (submissionsByDate[dateKey].includes(dailyProblemId)) {
+          dailyHistorySet.add(dateKey);
         }
       });
     }
 
     const history = Array.from(historySet).sort();
+    const dailyHistory = Array.from(dailyHistorySet).sort();
 
     res.json({
       currentStreak: user.currentStreak || 0,
       longestStreak: user.longestStreak || 0,
       lastSolvedAt: user.lastSolvedAt || null,
-      history // Array of "YYYY-MM-DD" strings
+      history, // Array of ISO strings
+      dailyHistory // Array of "YYYY-MM-DD" strings
     });
   } catch (err) {
     next(err);
@@ -457,7 +485,7 @@ const getDailyProblem = async (req, res, next) => {
 
     const seed = Array.from(dateKey).reduce((s, c) => s + c.charCodeAt(0), 0);
     const idx = seed % count;
-    const problem = await Problem.findOne().skip(idx).lean();
+    const problem = await Problem.findOne().sort({ _id: 1 }).skip(idx).lean();
     res.json(problem);
   } catch (err) {
     next(err);
