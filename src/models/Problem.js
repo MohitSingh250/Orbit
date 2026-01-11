@@ -11,6 +11,7 @@ difficulty: { type: String, enum: ['easy','medium','hard'], default: 'medium', i
 badges: [{ type: String }], 
 sources: [{ type: String }],
 inputType: { type: String, enum: ['mcq_single','numeric','manual','expression'], default: 'mcq_single' },
+usage: { type: String, enum: ['practice', 'contest', 'quest'], default: 'practice', index: true },
 options: [{ id: String, text: String }],
 correctAnswer: mongoose.Schema.Types.Mixed,
 numericTolerance: { type: Number, default: 1e-3 },

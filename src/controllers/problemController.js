@@ -14,7 +14,7 @@ const createProblem = async (req, res, next) => {
 const listProblems = async (req, res, next) => {
   try {
     const { topic, subject, difficulty, tags, q, page = 1, limit = 20 } = req.query;
-    const filters = {};
+    const filters = { usage: 'practice' };
     if (q && q.trim()) {
       const searchTerms = q.trim().split(/\s+/);
       filters.$and = searchTerms.map(term => ({
@@ -62,9 +62,9 @@ const listProblems = async (req, res, next) => {
 const randomProblem = async (req, res, next) => { 
   console.log("randomProblem")
   try {
-    const count = await Problem.countDocuments();
+    const count = await Problem.countDocuments({ usage: 'practice' });
     const random = Math.floor(Math.random() * count);
-    const problem = await Problem.findOne().skip(random).lean();
+    const problem = await Problem.findOne({ usage: 'practice' }).skip(random).lean();
     res.json(problem);
   } catch (err) {
     next(err);

@@ -4,7 +4,7 @@ const nodeSchema = new mongoose.Schema({
   id: { type: Number, required: true },
   title: { type: String },
   type: { type: String, enum: ['node', 'chest', 'mystery'], default: 'node' },
-  problemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Problem' },
+  problemIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }],
 });
 
 const sectionSchema = new mongoose.Schema({
