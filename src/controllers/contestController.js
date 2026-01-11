@@ -92,10 +92,61 @@ const registerForContest = async (req, res) => {
 };
 
 // -------------------------------------------------------------
+// ENSURE UPCOMING CONTESTS (JEE Mains & Advanced)
+// -------------------------------------------------------------
+const ensureUpcomingContests = async () => {
+  try {
+    const now = new Date();
+    const difficulties = ["jee-mains", "jee-advanced"];
+    
+    for (const diff of difficulties) {
+      const upcoming = await Contest.findOne({
+        difficulty: diff,
+        startTime: { $gt: now }
+      });
+
+      if (!upcoming) {
+        // Find max contest number
+        const lastContest = await Contest.findOne().sort({ contestNumber: -1 });
+        const nextNumber = (lastContest?.contestNumber || 0) + 1;
+        
+        // Calculate next Sunday at 10 AM (Mains) or 2 PM (Advanced)
+        let nextStart = new Date();
+        nextStart.setDate(nextStart.getDate() + (7 - nextStart.getDay()) % 7);
+        nextStart.setHours(diff === "jee-mains" ? 10 : 14, 0, 0, 0);
+        
+        // If that time has already passed today, move to next week
+        if (nextStart <= now) {
+          nextStart.setDate(nextStart.getDate() + 7);
+        }
+
+        const nextEnd = new Date(nextStart.getTime() + 3 * 60 * 60 * 1000); // 3 hours later
+
+        const newContest = new Contest({
+          contestNumber: nextNumber,
+          title: `Orbit Weekly Contest (${diff === "jee-mains" ? "JEE Mains" : "JEE Advanced"})`,
+          type: "weekly",
+          difficulty: diff,
+          startTime: nextStart,
+          endTime: nextEnd,
+          bannerImage: diff === "jee-mains" ? "/store/mock_tests_v2.png" : "/store/physics_cheat_sheet_v2.png"
+        });
+
+        await newContest.save();
+        console.log(`Auto-created upcoming contest: ${newContest.title}`);
+      }
+    }
+  } catch (err) {
+    console.error("Error in ensureUpcomingContests:", err);
+  }
+};
+
+// -------------------------------------------------------------
 // GET ALL CONTESTS
 // -------------------------------------------------------------
 const getContests = async (req, res) => {
   try {
+    await ensureUpcomingContests();
     const contests = await Contest.find().sort({ startTime: 1 }).lean();
     return res.json({ success: true, contests });
   } catch (err) {

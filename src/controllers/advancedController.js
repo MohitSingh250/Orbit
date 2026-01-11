@@ -492,6 +492,74 @@ const getDailyProblem = async (req, res, next) => {
   }
 };
 
+const updateNote = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { problemId, note } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(problemId)) return res.status(400).json({ message: 'Invalid problemId' });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const noteIndex = user.notes.findIndex(n => String(n.problemId) === String(problemId));
+    if (noteIndex > -1) {
+      user.notes[noteIndex].note = note;
+      user.notes[noteIndex].createdAt = new Date();
+    } else {
+      user.notes.push({ problemId, note });
+    }
+
+    await user.save();
+    res.json({ message: 'Note updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteNote = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { problemId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(problemId)) return res.status(400).json({ message: 'Invalid problemId' });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.notes = user.notes.filter(n => String(n.problemId) !== String(problemId));
+    await user.save();
+    res.json({ message: 'Note deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const Transaction = require('../models/Transaction');
+const Order = require('../models/Order');
+
+const getPointsHistory = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const transactions = await Transaction.find({ userId }).sort({ createdAt: -1 }).lean();
+    const user = await User.findById(userId).select('orbitCoins').lean();
+    res.json({
+      balance: user.orbitCoins || 0,
+      history: transactions
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getOrders = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const orders = await Order.find({ userId }).sort({ createdAt: -1 }).lean();
+    res.json(orders);
+  } catch (err) {
+    next(err);
+  }
+};
+
 const getGlobalStats = async (req, res, next) => {
   try {
     const [totalProblems, totalUsers, totalSubmissions, activeContests, physicsCount, chemistryCount, mathsCount] = await Promise.all([
@@ -531,5 +599,9 @@ module.exports = {
   getUserDashboard,
   getUserStreak,
   getUserProfile,
-  getGlobalStats
+  getGlobalStats,
+  updateNote,
+  deleteNote,
+  getPointsHistory,
+  getOrders
 };

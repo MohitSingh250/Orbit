@@ -145,11 +145,19 @@ const updateProfile = async (req, res, next) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const { username, location, avatar, oldPassword, newPassword } = req.body;
+    const { 
+      username, location, avatar, about, website, 
+      github, linkedin, skills, oldPassword, newPassword 
+    } = req.body;
 
     if (username) user.username = username;
     if (location) user.location = location;
     if (avatar) user.avatar = avatar;
+    if (about !== undefined) user.about = about;
+    if (website !== undefined) user.website = website;
+    if (github !== undefined) user.github = github;
+    if (linkedin !== undefined) user.linkedin = linkedin;
+    if (skills !== undefined) user.skills = skills;
 
     // Password update (only if both old & new provided)
     if (oldPassword && newPassword) {
@@ -169,6 +177,11 @@ const updateProfile = async (req, res, next) => {
         username: user.username,
         location: user.location,
         avatar: user.avatar,
+        about: user.about,
+        website: user.website,
+        github: user.github,
+        linkedin: user.linkedin,
+        skills: user.skills,
       },
     });
   } catch (err) {

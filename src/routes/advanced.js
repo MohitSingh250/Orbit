@@ -18,6 +18,10 @@ router.post('/users/me/bookmarks', auth, ctrl.toggleBookmark);
 router.get('/users/me/bookmarks', auth, ctrl.getBookmarks);
 router.get('/users/me/dashboard', auth, ctrl.getUserDashboard);
 router.get('/users/me/streak', auth, ctrl.getUserStreak);
+router.put('/users/me/notes', auth, ctrl.updateNote);
+router.delete('/users/me/notes/:problemId', auth, ctrl.deleteNote);
+router.get('/users/me/points', auth, ctrl.getPointsHistory);
+router.get('/users/me/orders', auth, ctrl.getOrders);
 router.get('/users/:id/profile', ctrl.getUserProfile);
 router.get('/stats', ctrl.getGlobalStats);
 

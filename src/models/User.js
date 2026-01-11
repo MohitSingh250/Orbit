@@ -54,7 +54,9 @@ const UserSchema = new mongoose.Schema({
   learningGoals: { type: [String], default: [] },
   skillLevel: { type: String, enum: ['beginner', 'intermediate', 'advanced', ''], default: '' },
   referral: { type: String, default: '' },
-  coupon: { type: String, default: '' }
+  coupon: { type: String, default: '' },
+  orbitCoins: { type: Number, default: 0 },
+  orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }]
 });
 
 module.exports = mongoose.model('User', UserSchema);

@@ -68,14 +68,14 @@ CLOUDINARY_API_SECRET=your-api-secret
 | POST | `/login` | Login with email/password |
 | POST | `/google` | Google OAuth login |
 | GET | `/me` | Get current authenticated user |
-| PUT | `/me` | Update profile details |
+| PUT | `/me` | Update profile (about, skills, social links, etc.) |
 | POST | `/me/avatar` | Upload avatar |
 | POST | `/refresh` | Refresh JWT token |
 
 ### 📝 Problem Routes (`/api/problems`)
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| GET | `/` | List all problems |
+| GET | `/` | List all problems (with filters & pagination) |
 | GET | `/random/problem` | Get a random problem |
 | GET | `/:id` | Get problem details by ID |
 | GET | `/:id/me` | Get user-specific problem info |
@@ -91,10 +91,23 @@ CLOUDINARY_API_SECRET=your-api-secret
 ### 🏆 Contest Routes (`/api/contests`)
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| GET | `/` | List contests |
+| GET | `/` | List contests (Auto-schedules recurring JEE contests) |
 | POST | `/` | Create a contest |
 | GET | `/:id` | Get contest details |
 | POST | `/:id/register` | Register for a contest |
+| DELETE | `/:id` | Delete contest and its problems |
+
+### 📚 Collection Routes (`/api/collections`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| GET | `/` | Get user's custom collections |
+| POST | `/` | Create a new collection |
+| GET | `/:id` | Get collection details |
+| PUT | `/:id` | Update collection (name, description, privacy) |
+| DELETE | `/:id` | Delete a collection |
+| POST | `/:id/problems` | Add problem to collection |
+| DELETE | `/:id/problems/:problemId` | Remove problem from collection |
+| POST | `/:id/fork` | Fork a public collection |
 
 ### 📊 Leaderboard Routes (`/api/leaderboards`)
 | Method | Endpoint | Description |
@@ -108,6 +121,10 @@ CLOUDINARY_API_SECRET=your-api-secret
 | GET | `/users/me/streak` | User streak info |
 | POST | `/users/me/bookmarks` | Toggle bookmark |
 | GET | `/users/me/bookmarks` | List bookmarks |
+| PUT | `/notes/:id` | Update a user note |
+| DELETE | `/notes/:id` | Delete a user note |
+| GET | `/points/history` | Get OrbitCoin transaction history |
+| GET | `/orders` | Get user's store purchase history |
 
 🛠️ Setup Instructions
 
