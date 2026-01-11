@@ -27,6 +27,7 @@ app.use('/api/contests', contestRoutes);
 app.use('/api/discussions', discussionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/quests', questRoutes);
+app.use('/api/collections', require('./src/routes/collections'));
 app.use('/api/study-plans', require('./src/routes/studyPlans'));
 
 app.use(errorHandler);

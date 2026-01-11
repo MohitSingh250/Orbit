@@ -19,6 +19,7 @@ const UserSchema = new mongoose.Schema({
   }],
   notes: [NoteSchema],
   bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }],
+  collections: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Collection' }],
   currentStreak: { type: Number, default: 0 },      
   longestStreak: { type: Number, default: 0 },      
   lastSolvedAt: { type: Date },                     
